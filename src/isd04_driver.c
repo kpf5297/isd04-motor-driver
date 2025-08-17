@@ -130,19 +130,35 @@ Isd04Driver *isd04_driver_get_instance(void)
     return instance;
 }
 
-void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config)
+void isd04_driver_get_default_config(Isd04Config *config)
 {
-    if (!driver || !config) {
+    if (!config) {
+        return;
+    }
+
+    config->pwm_frequency_hz = 20000U;
+    config->max_speed = 1000;
+    config->microstep = ISD04_MICROSTEP_3200;
+    config->phase_current_ma = 2800U;
+}
+
+void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd04Hardware *hw)
+{
+    if (!driver || !config || !hw) {
         return;
     }
 
     driver->config = *config;
+    driver->hw = *hw;
     driver->current_speed = 0;
     driver->current_position = 0;
     driver->running = false;
     driver->callback = NULL;
     driver->callback_context = NULL;
-    driver->microstep = ISD04_MICROSTEP_200;
+    driver->microstep = config->microstep;
+    ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(driver->microstep));
+    HAL_GPIO_WritePin(driver->hw.ena_port, driver->hw.ena_pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(driver->hw.dir_port, driver->hw.dir_pin, GPIO_PIN_RESET);
     change_state(driver, &stopped_state);
 }
 
@@ -197,6 +213,32 @@ Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver)
     }
 
     return driver->microstep;
+}
+
+void isd04_driver_set_direction(Isd04Driver *driver, bool forward)
+{
+    if (!driver) {
+        return;
+    }
+    HAL_GPIO_WritePin(driver->hw.dir_port, driver->hw.dir_pin, forward ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void isd04_driver_enable(Isd04Driver *driver, bool enable)
+{
+    if (!driver) {
+        return;
+    }
+    HAL_GPIO_WritePin(driver->hw.ena_port, driver->hw.ena_pin, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void isd04_driver_pulse(Isd04Driver *driver)
+{
+    if (!driver) {
+        return;
+    }
+    HAL_GPIO_WritePin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET);
+    isd04_driver_step(driver, 1);
 }
 
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context)
