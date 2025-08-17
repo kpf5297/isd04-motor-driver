@@ -24,24 +24,31 @@ static void on_event(Isd04Event event, void *context) {
 }
 
 int main(void) {
-    Isd04Config config = {
-        .pwm_frequency_hz = 1000,
-        .max_speed = 100,
+    Isd04Config config;
+    isd04_driver_get_default_config(&config);
+
+    Isd04Hardware hw = {
+        .stp_port = GPIOA,
+        .stp_pin  = GPIO_PIN_0,
+        .dir_port = GPIOA,
+        .dir_pin  = GPIO_PIN_1,
+        .ena_port = GPIOA,
+        .ena_pin  = GPIO_PIN_2,
     };
 
     Isd04Driver *driver = isd04_driver_get_instance();
-    isd04_driver_init(driver, &config);
+    isd04_driver_init(driver, &config, &hw);
     /* pass driver as context so the callback can query state */
     isd04_driver_register_callback(driver, on_event, driver);
 
-    /* configure microstepping */
-    isd04_driver_set_microstep(driver, ISD04_MICROSTEP_1600);
+    isd04_driver_enable(driver, true);
+    isd04_driver_set_direction(driver, true);
 
     isd04_driver_start(driver);
     isd04_driver_set_speed(driver, 50);
 
-    /* periodically advance position */
-    isd04_driver_step(driver, 1); /* call from a timer/interrupt */
+    /* periodically issue a step pulse */
+    isd04_driver_pulse(driver); /* call from a timer/interrupt */
 
     /* ... */
 
@@ -50,6 +57,6 @@ int main(void) {
 }
 ```
 
-To keep the driver's `current_position` in sync with actual motor motion, call
-`isd04_driver_step` from a periodic timer or interrupt whenever step pulses are
-issued. This allows real-time position queries via `isd04_driver_get_position`.
+`isd04_driver_pulse` toggles the step pin and updates the driver's internal
+position counter. If step pulses are produced elsewhere, call
+`isd04_driver_step` to keep the tracked position synchronized.

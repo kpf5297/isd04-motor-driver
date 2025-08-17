@@ -4,19 +4,52 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#if __has_include("stm32f4xx_hal.h")
+#include "stm32f4xx_hal.h"
+#else
+typedef struct GPIO_TypeDef GPIO_TypeDef;
+typedef enum { GPIO_PIN_RESET = 0U, GPIO_PIN_SET } GPIO_PinState;
+static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinState state) {
+    (void)port; (void)pin; (void)state;
+}
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/** Supported microstep resolutions. */
+typedef enum {
+    ISD04_MICROSTEP_200 = 200,
+    ISD04_MICROSTEP_400 = 400,
+    ISD04_MICROSTEP_800 = 800,
+    ISD04_MICROSTEP_1600 = 1600,
+    ISD04_MICROSTEP_3200 = 3200,
+} Isd04Microstep;
+
 /**
- * Configuration parameters for the ISD04 driver.
+ * Static configuration for the ISD04 driver.
  */
 typedef struct {
     /** PWM frequency in Hz. */
     uint32_t pwm_frequency_hz;
     /** Maximum speed value permitted. */
     int32_t max_speed;
+    /** Default microstepping resolution. */
+    Isd04Microstep microstep;
+    /** Phase current in milliamps. */
+    uint16_t phase_current_ma;
 } Isd04Config;
+
+/** Hardware definition for ISD04 control pins. */
+typedef struct {
+    GPIO_TypeDef *stp_port;
+    uint16_t stp_pin;
+    GPIO_TypeDef *dir_port;
+    uint16_t dir_pin;
+    GPIO_TypeDef *ena_port;
+    uint16_t ena_pin;
+} Isd04Hardware;
 
 /**
  * Events that can be emitted by the driver.
@@ -33,15 +66,6 @@ typedef enum {
     /** Motor position has changed. */
     ISD04_EVENT_POSITION_CHANGED,
 } Isd04Event;
-
-/** Supported microstep resolutions. */
-typedef enum {
-    ISD04_MICROSTEP_200 = 200,
-    ISD04_MICROSTEP_400 = 400,
-    ISD04_MICROSTEP_800 = 800,
-    ISD04_MICROSTEP_1600 = 1600,
-    ISD04_MICROSTEP_3200 = 3200,
-} Isd04Microstep;
 
 /** DIP switch patterns for microstep modes. */
 #define ISD04_MICROSTEP_200_BITS   0x0
@@ -91,6 +115,8 @@ struct Isd04State; /* Forward declaration of state structure. */
 typedef struct {
     /** Static configuration for the device. */
     Isd04Config config;
+    /** Hardware pins controlling the driver. */
+    Isd04Hardware hw;
     /** Current motor speed. */
     int32_t current_speed;
     /** Current motor position in steps. */
@@ -107,12 +133,16 @@ typedef struct {
     const struct Isd04State *state;
 } Isd04Driver;
 
-void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config);
+void isd04_driver_get_default_config(Isd04Config *config);
+void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd04Hardware *hw);
 void isd04_driver_start(Isd04Driver *driver);
 void isd04_driver_stop(Isd04Driver *driver);
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
 void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode);
 Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver);
+void isd04_driver_set_direction(Isd04Driver *driver, bool forward);
+void isd04_driver_enable(Isd04Driver *driver, bool enable);
+void isd04_driver_pulse(Isd04Driver *driver);
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context);
 Isd04Driver *isd04_driver_get_instance(void);
 Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
