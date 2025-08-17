@@ -33,6 +33,16 @@ typedef enum {
 /** Callback invoked when a driver event occurs. */
 typedef void (*Isd04EventCallback)(Isd04Event event, void *context);
 
+/** Identifier for the internal driver state. */
+typedef enum {
+    /** Driver is stopped and motor is not running. */
+    ISD04_STATE_STOPPED,
+    /** Driver is running and controlling the motor. */
+    ISD04_STATE_RUNNING,
+} Isd04StateId;
+
+struct Isd04State; /* Forward declaration of state structure. */
+
 /**
  * Runtime state for an ISD04 motor driver instance.
  */
@@ -47,6 +57,8 @@ typedef struct {
     Isd04EventCallback callback;
     /** User supplied context passed to the callback. */
     void *callback_context;
+    /** Current behavioral state of the driver. */
+    const struct Isd04State *state;
 } Isd04Driver;
 
 void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config);
@@ -55,6 +67,7 @@ void isd04_driver_stop(Isd04Driver *driver);
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context);
 Isd04Driver *isd04_driver_get_instance(void);
+Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
 
 #ifdef __cplusplus
 }
