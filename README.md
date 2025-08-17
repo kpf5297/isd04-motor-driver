@@ -10,6 +10,17 @@ Call `isd04_driver_get_version()` to query the driver's semantic version string:
 const char *version = isd04_driver_get_version();
 ```
 
+## Hardware Setup
+
+Connect the microcontroller's STEP, DIR, and ENA signals to the ISD04 control
+inputs on connector P2 as described in the datasheet. P2 exposes each signal as
+a differential pair; tie the negative pins to ground and drive the positive
+pins from the MCU's GPIO outputs.
+
+All three logic inputs default high when left floating. Drive STEP high then
+low to advance a microstep, set DIR high for forward rotation and low for
+reverse, and pull ENA low to enable the outputs (high disables the driver).
+
 ## Usage
 
 ```c
@@ -65,6 +76,42 @@ int main(void) {
     return 0;
 }
 ```
+
+## Timer Integration
+
+The driver can be stepped from a periodic timer interrupt. The example below
+configures a 1 kHz update timer using the STM32 HAL and emits a pulse from the
+callback:
+
+```c
+static TIM_HandleTypeDef htim2;
+
+void isd04_timer_init(void)
+{
+    __HAL_RCC_TIM2_CLK_ENABLE();
+    htim2.Instance = TIM2;
+    htim2.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / 1000000U) - 1U; // 1 MHz base
+    htim2.Init.Period = 1000U - 1U; // 1 kHz
+    htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+    HAL_TIM_Base_Init(&htim2);
+    HAL_TIM_Base_Start_IT(&htim2);
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM2) {
+        isd04_driver_pulse(driver);
+        /* optionally send telemetry */
+        // isd04_driver_send_telemetry(driver);
+    }
+}
+```
+
+`isd04_driver_pulse` honours the `ISD04_STEP_MIN_INTERVAL_US` macro, ensuring
+successive pulses respect the datasheet's minimum step period. When enabling the
+driver, `ISD04_ENABLE_WAKE_DELAY_MS` inserts the mandated wake delay before the
+first pulse. These guards keep the system within the timing limits specified by
+the ISD04 datasheet.
 
 ## Hardware validation and error handling
 
