@@ -191,6 +191,9 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->running = false;
     driver->enabled = true;
     driver->last_step_tick = 0U;
+#if ISD04_STEP_CONTROL_TIMER
+    driver->step_timer = NULL;
+#endif
     driver->callback = NULL;
     driver->callback_context = NULL;
     driver->microstep = config->microstep;
@@ -308,6 +311,25 @@ void isd04_driver_pulse(Isd04Driver *driver)
         }
     }
 #endif
+    
+#if ISD04_STEP_CONTROL_TIMER
+    if (driver->step_timer) {
+        if (HAL_TIM_Base_Start(driver->step_timer) != HAL_OK ||
+            HAL_TIM_Base_Stop(driver->step_timer) != HAL_OK) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+            return;
+        }
+    } else {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+        return;
+    }
+#else
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
         driver->error = true;
         if (driver->callback) {
@@ -326,6 +348,7 @@ void isd04_driver_pulse(Isd04Driver *driver)
         }
         return;
     }
+#endif
     driver->last_step_tick = ISD04_DELAY_START();
     isd04_driver_step(driver, 1);
 }
@@ -381,6 +404,24 @@ void isd04_driver_step(Isd04Driver *driver, int32_t steps)
         driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
     }
 }
+
+#if ISD04_STEP_CONTROL_TIMER
+void isd04_driver_bind_step_timer(Isd04Driver *driver, Isd04Timer *timer)
+{
+    if (!driver) {
+        return;
+    }
+    driver->step_timer = timer;
+}
+
+void isd04_driver_unbind_step_timer(Isd04Driver *driver)
+{
+    if (!driver) {
+        return;
+    }
+    driver->step_timer = NULL;
+}
+#endif
 
 static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed)
 {
