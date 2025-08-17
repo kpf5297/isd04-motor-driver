@@ -29,9 +29,10 @@ int main(void) {
     isd04_driver_start(driver);
     isd04_driver_set_speed(driver, 50);
 
-    /* query current behavioral state */
-    Isd04StateId state = isd04_driver_get_state(driver);
-    (void)state;
+    /* periodically advance position and read it */
+    isd04_driver_step(driver, 1); /* call from a timer/interrupt */
+    int32_t pos = isd04_driver_get_position(driver);
+    (void)pos;
 
     /* ... */
 
@@ -39,3 +40,7 @@ int main(void) {
     return 0;
 }
 ```
+
+To keep the driver's `current_position` in sync with actual motor motion, call
+`isd04_driver_step` from a periodic timer or interrupt whenever step pulses are
+issued. This allows real-time position queries via `isd04_driver_get_position`.

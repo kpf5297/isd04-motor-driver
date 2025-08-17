@@ -138,6 +138,7 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config)
 
     driver->config = *config;
     driver->current_speed = 0;
+    driver->current_position = 0;
     driver->running = false;
     driver->callback = NULL;
     driver->callback_context = NULL;
@@ -213,6 +214,38 @@ Isd04StateId isd04_driver_get_state(const Isd04Driver *driver)
         return ISD04_STATE_STOPPED;
     }
     return driver->state->id;
+}
+
+int32_t isd04_driver_get_position(const Isd04Driver *driver)
+{
+    if (!driver) {
+        return 0;
+    }
+    return driver->current_position;
+}
+
+void isd04_driver_set_position(Isd04Driver *driver, int32_t position)
+{
+    if (!driver) {
+        return;
+    }
+    if (driver->current_position != position) {
+        driver->current_position = position;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
+        }
+    }
+}
+
+void isd04_driver_step(Isd04Driver *driver, int32_t steps)
+{
+    if (!driver || steps == 0) {
+        return;
+    }
+    driver->current_position += steps;
+    if (driver->callback) {
+        driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
+    }
 }
 
 static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed)
