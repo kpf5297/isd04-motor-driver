@@ -5,6 +5,22 @@
 /** Singleton driver instance. */
 static Isd04Driver *instance = NULL;
 
+/**
+ * Wrapper around HAL_GPIO_WritePin that returns success/failure.
+ *
+ * The underlying HAL call does not report status, so this wrapper primarily
+ * validates the port pointer and assumes the HAL operation succeeds when the
+ * pointer is valid.
+ */
+static inline bool isd04_gpio_write_pin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinState state)
+{
+    if (!port) {
+        return false;
+    }
+    HAL_GPIO_WritePin(port, pin, state);
+    return true;
+}
+
 /** Clamp speed to the allowable range. */
 static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
 /** Clamp microstep mode to the allowable range. */
@@ -153,6 +169,13 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
         return;
     }
 
+    driver->error = false;
+
+    if (!hw->stp_port || !hw->dir_port || !hw->ena_port) {
+        driver->error = true;
+        return;
+    }
+
     driver->config = *config;
     driver->hw = *hw;
     driver->current_speed = 0;
@@ -162,8 +185,11 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->callback_context = NULL;
     driver->microstep = config->microstep;
     ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(driver->microstep));
-    HAL_GPIO_WritePin(driver->hw.ena_port, driver->hw.ena_pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(driver->hw.dir_port, driver->hw.dir_pin, GPIO_PIN_RESET);
+    if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin, GPIO_PIN_SET) ||
+        !isd04_gpio_write_pin(driver->hw.dir_port, driver->hw.dir_pin, GPIO_PIN_RESET)) {
+        driver->error = true;
+        return;
+    }
     change_state(driver, &stopped_state);
 }
 
@@ -225,7 +251,13 @@ void isd04_driver_set_direction(Isd04Driver *driver, bool forward)
     if (!driver) {
         return;
     }
-    HAL_GPIO_WritePin(driver->hw.dir_port, driver->hw.dir_pin, forward ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    if (!isd04_gpio_write_pin(driver->hw.dir_port, driver->hw.dir_pin,
+                               forward ? GPIO_PIN_SET : GPIO_PIN_RESET)) {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+    }
 }
 
 void isd04_driver_enable(Isd04Driver *driver, bool enable)
@@ -233,7 +265,13 @@ void isd04_driver_enable(Isd04Driver *driver, bool enable)
     if (!driver) {
         return;
     }
-    HAL_GPIO_WritePin(driver->hw.ena_port, driver->hw.ena_pin, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin,
+                               enable ? GPIO_PIN_SET : GPIO_PIN_RESET)) {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+    }
 }
 
 void isd04_driver_pulse(Isd04Driver *driver)
@@ -241,8 +279,20 @@ void isd04_driver_pulse(Isd04Driver *driver)
     if (!driver) {
         return;
     }
-    HAL_GPIO_WritePin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET);
+    if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+        return;
+    }
+    if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET)) {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+        return;
+    }
     isd04_driver_step(driver, 1);
 }
 

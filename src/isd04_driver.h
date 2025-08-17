@@ -70,6 +70,8 @@ typedef enum {
     ISD04_EVENT_MICROSTEP_CHANGED,
     /** Motor position has changed. */
     ISD04_EVENT_POSITION_CHANGED,
+    /** A hardware access failure occurred. */
+    ISD04_EVENT_ERROR,
 } Isd04Event;
 
 /** DIP switch patterns for microstep modes. */
@@ -101,6 +103,7 @@ typedef enum {
  * - ::ISD04_EVENT_SPEED_CHANGED when the commanded speed is updated.
  * - ::ISD04_EVENT_MICROSTEP_CHANGED after a new microstepping mode is applied.
  * - ::ISD04_EVENT_POSITION_CHANGED whenever the tracked position is modified.
+ * - ::ISD04_EVENT_ERROR if a hardware write operation fails.
  */
 typedef void (*Isd04EventCallback)(Isd04Event event, void *context);
 
@@ -136,6 +139,8 @@ typedef struct {
     Isd04Microstep microstep;
     /** Current behavioral state of the driver. */
     const struct Isd04State *state;
+    /** Set when a hardware error has been detected. */
+    bool error;
 } Isd04Driver;
 
 const char *isd04_driver_get_version(void);
