@@ -1,8 +1,16 @@
 # isd04-motor-driver
 Portable C driver for the ISD04 motor driver IC with STM32 HAL reference port, example projects, and Python-based telemetry visualization.
 
+## Versioning
+Call `isd04_driver_get_version()` to query the driver's semantic version string:
+
+```c
+#include "isd04_driver.h"
+
+const char *version = isd04_driver_get_version();
+```
+
 ## Usage
-Call `isd04_driver_get_version()` to retrieve the driver's version string.
 
 ```c
 #include "isd04_driver.h"
@@ -25,9 +33,6 @@ static void on_event(Isd04Event event, void *context) {
 }
 
 int main(void) {
-    const char *version = isd04_driver_get_version();
-    (void)version;
-
     Isd04Config config;
     isd04_driver_get_default_config(&config);
 
@@ -61,10 +66,18 @@ int main(void) {
 }
 ```
 
+## Hardware validation and error handling
+
 The driver validates that the provided GPIO pins fall within the target MCU's
-pin count.  Override `ISD04_GPIO_PIN_COUNT` at compile time if your platform
-exposes a different number of pins per port.  Applications may use the
+pin count. Override `ISD04_GPIO_PIN_COUNT` at compile time if your platform
+exposes a different number of pins per port. Applications may use the
 `ISD04_VALIDATE_PIN(pin)` macro for their own static assertions.
+
+When built against the STM32 HAL the library assumes `HAL_GPIO_WritePin`
+succeeds for valid ports. The driver wraps this call to check port pointers and
+sets an internal error flag while emitting `ISD04_EVENT_ERROR` if a validation
+step fails or a write cannot be performed. Applications should supply valid
+hardware definitions and handle the error event to detect faults.
 
 `isd04_driver_pulse` toggles the step pin and updates the driver's internal
 position counter. If step pulses are produced elsewhere, call
@@ -72,20 +85,24 @@ position counter. If step pulses are produced elsewhere, call
 
 ## Timing helpers
 
-The driver exposes a small set of macros for integrating with platform-specific
-delay mechanisms:
+The driver exposes macros for integrating with platform-specific delay mechanisms:
 
-* `ISD04_DELAY_MS(ms)` – delay for a number of milliseconds.  Expands to
-  `HAL_Delay` when `USE_HAL_DRIVER` is defined, to `osDelay` when
-  `CMSIS_OS_VERSION` is defined, and otherwise becomes a no-op.
+* `ISD04_DELAY_MS(ms)` – blocking delay for a number of milliseconds.
 * `ISD04_DELAY_START()` / `ISD04_DELAY_ELAPSED(start, ms)` – capture a tick
-  count and test whether a duration has passed.  These map to `HAL_GetTick` or
-  `osKernelSysTick` depending on the same compile-time symbols.
+  count and test whether a duration has passed without blocking. For example:
 
-Define `USE_HAL_DRIVER` to build against the STM32 HAL and `CMSIS_OS_VERSION`
-when a CMSIS-RTOS is present.  Projects may also set
-`ISD04_STEP_PULSE_DELAY_MS` to a non-zero value to enforce a minimum step pulse
-width using the delay helpers.
+```c
+Isd04DelayTick start = ISD04_DELAY_START();
+while (!ISD04_DELAY_ELAPSED(start, 10)) {
+    /* perform other tasks */
+}
+```
+
+These macros map to `HAL_Delay`/`HAL_GetTick` when `USE_HAL_DRIVER` is defined
+and to `osDelay`/`osKernelSysTick` when `CMSIS_OS_VERSION` is defined. When
+neither symbol is present they become no-ops so the driver can be built for host
+tests. Projects may also set `ISD04_STEP_PULSE_DELAY_MS` to enforce a minimum
+step pulse width using the delay helpers.
 
 ## Version history
 
