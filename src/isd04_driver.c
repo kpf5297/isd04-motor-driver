@@ -1,8 +1,22 @@
 #include "isd04_driver.h"
 #include <stddef.h>
+#include <stdlib.h>
+
+/** Singleton driver instance. */
+static Isd04Driver *instance = NULL;
 
 /** Clamp speed to the allowable range. */
 static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
+
+Isd04Driver *isd04_driver_get_instance(void)
+{
+    if (instance) {
+        return instance;
+    }
+
+    instance = calloc(1, sizeof(Isd04Driver));
+    return instance;
+}
 
 void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config)
 {

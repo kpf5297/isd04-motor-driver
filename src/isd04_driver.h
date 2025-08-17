@@ -54,6 +54,7 @@ void isd04_driver_start(Isd04Driver *driver);
 void isd04_driver_stop(Isd04Driver *driver);
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context);
+Isd04Driver *isd04_driver_get_instance(void);
 
 #ifdef __cplusplus
 }
