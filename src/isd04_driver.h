@@ -14,68 +14,12 @@ static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinS
 }
 #endif
 
-/**
- * Delay helper macros.
- *
- * Depending on the build environment these expand to the appropriate HAL or
- * CMSIS-RTOS primitives.  When neither `USE_HAL_DRIVER` nor `CMSIS_OS_VERSION`
- * is defined they fall back to no-ops which allows the driver to be built for
- * host side tests.
- */
-#ifdef CMSIS_OS_VERSION
-#include "cmsis_os.h"
-/** Delay for the specified number of milliseconds. */
-#define ISD04_DELAY_MS(ms)            osDelay(ms)
-typedef uint32_t Isd04DelayTick;
-/** Capture the current system tick for later elapsed checks. */
-#define ISD04_DELAY_START()           (osKernelSysTick())
-/** Check whether @p ms milliseconds have elapsed since @p start. */
-#define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(osKernelSysTick() - (start)) >= (ms))
-#elif defined(USE_HAL_DRIVER)
-/** Delay for the specified number of milliseconds using the HAL. */
-#define ISD04_DELAY_MS(ms)            HAL_Delay(ms)
-typedef uint32_t Isd04DelayTick;
-/** Capture the current HAL tick for later elapsed checks. */
-#define ISD04_DELAY_START()           (HAL_GetTick())
-/** Check whether @p ms milliseconds have elapsed since @p start. */
-#define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(HAL_GetTick() - (start)) >= (ms))
-#else
-/** No-op delay used when neither HAL nor CMSIS-RTOS is available. */
-#define ISD04_DELAY_MS(ms)            do { (void)(ms); } while (0)
-typedef uint32_t Isd04DelayTick;
-#define ISD04_DELAY_START()           (0U)
-#define ISD04_DELAY_ELAPSED(start, ms) ((void)(start), (void)(ms), true)
-#endif
-
-#ifndef ISD04_DELAY_US
-#define ISD04_DELAY_US(us)      /* platform-specific microsecond delay */
-#endif
-#ifndef ISD04_STEP_MIN_INTERVAL_US
-#define ISD04_STEP_MIN_INTERVAL_US 4U  /* min low-level pulse width */
-#endif
-#ifndef ISD04_ENABLE_WAKE_DELAY_MS
-#define ISD04_ENABLE_WAKE_DELAY_MS 1U  /* delay after enabling driver */
-#endif
-
-#ifndef ISD04_ENA_ACTIVE_LEVEL
-#define ISD04_ENA_ACTIVE_LEVEL GPIO_PIN_RESET  /* active-low disable */
-#endif
+#include "isd04_driver_config.h"
 
 #define ISD04_DRIVER_VERSION_MAJOR 1
 #define ISD04_DRIVER_VERSION_MINOR 0
 #define ISD04_DRIVER_VERSION_PATCH 1
 #define ISD04_DRIVER_VERSION_STRING "1.0.1"
-
-/**
- * Number of GPIO pins available on the target MCU.
- *
- * Projects may override this definition at compile time if the platform
- * exposes a different number of GPIOs per port.  The default assumes a
- * 16-pin port layout commonly found on STM32 devices.
- */
-#ifndef ISD04_GPIO_PIN_COUNT
-#define ISD04_GPIO_PIN_COUNT 16U
-#endif
 
 /**
  * Validate that a GPIO pin definition does not exceed the MCU's pin count.

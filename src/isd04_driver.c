@@ -5,12 +5,6 @@
 /** Singleton driver instance. */
 static Isd04Driver *instance = NULL;
 
-/* Optional delay between rising and falling edges of the step pulse in
- * milliseconds.  Projects can override this at compile time to ensure the
- * pulse meets the driver's minimum width requirements. */
-#ifndef ISD04_STEP_PULSE_DELAY_MS
-#define ISD04_STEP_PULSE_DELAY_MS 0U
-#endif
 
 /**
  * Wrapper around HAL_GPIO_WritePin that returns success/failure.
