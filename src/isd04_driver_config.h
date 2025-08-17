@@ -51,6 +51,10 @@ typedef uint32_t Isd04DelayTick;
 #define ISD04_STEP_PULSE_DELAY_MS 0U
 #endif
 
+#ifndef ISD04_STEP_CONTROL_TIMER
+#define ISD04_STEP_CONTROL_TIMER 0U
+#endif
+
 #ifndef ISD04_GPIO_PIN_COUNT
 #define ISD04_GPIO_PIN_COUNT 16U
 #endif
