@@ -41,7 +41,7 @@ static inline void ISD04_DELAY_US(uint32_t us)
     }
     uint32_t start = osKernelSysTick();
     uint32_t ticks = (us % 1000U) * osKernelGetTickFreq() / 1000000U;
-    while ((uint32_t)(osKernelSysTick() - start) < ticks) {
+    while (ISD04_TICK_ELAPSED(osKernelSysTick(), start) < ticks) {
     }
 }
 #elif defined(USE_HAL_DRIVER)
