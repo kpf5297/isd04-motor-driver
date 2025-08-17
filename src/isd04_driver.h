@@ -62,7 +62,17 @@ typedef enum {
 #define ISD04_APPLY_MICROSTEP(bits) \
     do { (void)(bits); } while (0)
 
-/** Callback invoked when a driver event occurs. */
+/**
+ * Callback invoked when a driver event occurs.
+ *
+ * The callback receives one of the following events:
+ *
+ * - ::ISD04_EVENT_STARTED when the driver transitions to the running state.
+ * - ::ISD04_EVENT_STOPPED when the driver halts the motor.
+ * - ::ISD04_EVENT_SPEED_CHANGED when the commanded speed is updated.
+ * - ::ISD04_EVENT_MICROSTEP_CHANGED after a new microstepping mode is applied.
+ * - ::ISD04_EVENT_POSITION_CHANGED whenever the tracked position is modified.
+ */
 typedef void (*Isd04EventCallback)(Isd04Event event, void *context);
 
 /** Identifier for the internal driver state. */
