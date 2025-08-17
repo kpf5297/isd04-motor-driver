@@ -2,6 +2,7 @@
 Portable C driver for the ISD04 motor driver IC with STM32 HAL reference port, example projects, and Python-based telemetry visualization.
 
 ## Usage
+Call `isd04_driver_get_version()` to retrieve the driver's version string.
 
 ```c
 #include "isd04_driver.h"
@@ -24,6 +25,9 @@ static void on_event(Isd04Event event, void *context) {
 }
 
 int main(void) {
+    const char *version = isd04_driver_get_version();
+    (void)version;
+
     Isd04Config config;
     isd04_driver_get_default_config(&config);
 

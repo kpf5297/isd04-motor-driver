@@ -10,6 +10,11 @@ static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
 /** Clamp microstep mode to the allowable range. */
 static Isd04Microstep clamp_microstep(Isd04Microstep mode);
 
+const char *isd04_driver_get_version(void)
+{
+    return ISD04_DRIVER_VERSION_STRING;
+}
+
 /** State object defining behaviour for driver operations. */
 typedef struct Isd04State {
     Isd04StateId id;
