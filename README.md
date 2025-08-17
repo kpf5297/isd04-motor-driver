@@ -64,3 +64,20 @@ int main(void) {
 `isd04_driver_pulse` toggles the step pin and updates the driver's internal
 position counter. If step pulses are produced elsewhere, call
 `isd04_driver_step` to keep the tracked position synchronized.
+
+## Timing helpers
+
+The driver exposes a small set of macros for integrating with platform-specific
+delay mechanisms:
+
+* `ISD04_DELAY_MS(ms)` – delay for a number of milliseconds.  Expands to
+  `HAL_Delay` when `USE_HAL_DRIVER` is defined, to `osDelay` when
+  `CMSIS_OS_VERSION` is defined, and otherwise becomes a no-op.
+* `ISD04_DELAY_START()` / `ISD04_DELAY_ELAPSED(start, ms)` – capture a tick
+  count and test whether a duration has passed.  These map to `HAL_GetTick` or
+  `osKernelSysTick` depending on the same compile-time symbols.
+
+Define `USE_HAL_DRIVER` to build against the STM32 HAL and `CMSIS_OS_VERSION`
+when a CMSIS-RTOS is present.  Projects may also set
+`ISD04_STEP_PULSE_DELAY_MS` to a non-zero value to enforce a minimum step pulse
+width using the delay helpers.

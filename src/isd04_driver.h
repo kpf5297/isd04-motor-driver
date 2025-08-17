@@ -14,6 +14,39 @@ static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinS
 }
 #endif
 
+/**
+ * Delay helper macros.
+ *
+ * Depending on the build environment these expand to the appropriate HAL or
+ * CMSIS-RTOS primitives.  When neither `USE_HAL_DRIVER` nor `CMSIS_OS_VERSION`
+ * is defined they fall back to no-ops which allows the driver to be built for
+ * host side tests.
+ */
+#ifdef CMSIS_OS_VERSION
+#include "cmsis_os.h"
+/** Delay for the specified number of milliseconds. */
+#define ISD04_DELAY_MS(ms)            osDelay(ms)
+typedef uint32_t Isd04DelayTick;
+/** Capture the current system tick for later elapsed checks. */
+#define ISD04_DELAY_START()           (osKernelSysTick())
+/** Check whether @p ms milliseconds have elapsed since @p start. */
+#define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(osKernelSysTick() - (start)) >= (ms))
+#elif defined(USE_HAL_DRIVER)
+/** Delay for the specified number of milliseconds using the HAL. */
+#define ISD04_DELAY_MS(ms)            HAL_Delay(ms)
+typedef uint32_t Isd04DelayTick;
+/** Capture the current HAL tick for later elapsed checks. */
+#define ISD04_DELAY_START()           (HAL_GetTick())
+/** Check whether @p ms milliseconds have elapsed since @p start. */
+#define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(HAL_GetTick() - (start)) >= (ms))
+#else
+/** No-op delay used when neither HAL nor CMSIS-RTOS is available. */
+#define ISD04_DELAY_MS(ms)            do { (void)(ms); } while (0)
+typedef uint32_t Isd04DelayTick;
+#define ISD04_DELAY_START()           (0U)
+#define ISD04_DELAY_ELAPSED(start, ms) ((void)(start), (void)(ms), true)
+#endif
+
 #define ISD04_DRIVER_VERSION_MAJOR 1
 #define ISD04_DRIVER_VERSION_MINOR 0
 #define ISD04_DRIVER_VERSION_PATCH 0
