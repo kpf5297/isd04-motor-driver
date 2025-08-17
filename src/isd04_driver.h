@@ -20,7 +20,9 @@ static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinS
 #if __has_include("stm32f4xx_hal_tim.h")
 #include "stm32f4xx_hal_tim.h"
 #else
-typedef struct TIM_HandleTypeDef TIM_HandleTypeDef;
+typedef struct {
+    void *dummy;
+} TIM_HandleTypeDef;
 typedef enum { HAL_OK = 0U, HAL_ERROR = 1U } HAL_StatusTypeDef;
 static inline HAL_StatusTypeDef HAL_TIM_Base_Start(TIM_HandleTypeDef *htim) { (void)htim; return HAL_OK; }
 static inline HAL_StatusTypeDef HAL_TIM_Base_Stop(TIM_HandleTypeDef *htim) { (void)htim; return HAL_OK; }
