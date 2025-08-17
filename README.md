@@ -7,8 +7,20 @@ Portable C driver for the ISD04 motor driver IC with STM32 HAL reference port, e
 #include "isd04_driver.h"
 
 static void on_event(Isd04Event event, void *context) {
-    (void)context;
-    /* react to driver events */
+    Isd04Driver *driver = (Isd04Driver *)context;
+
+    switch (event) {
+    case ISD04_EVENT_MICROSTEP_CHANGED:
+        /* react to microstep changes */
+        (void)isd04_driver_get_microstep(driver);
+        break;
+    case ISD04_EVENT_POSITION_CHANGED:
+        /* respond to position updates */
+        (void)isd04_driver_get_position(driver);
+        break;
+    default:
+        break;
+    }
 }
 
 int main(void) {
@@ -19,20 +31,17 @@ int main(void) {
 
     Isd04Driver *driver = isd04_driver_get_instance();
     isd04_driver_init(driver, &config);
-    isd04_driver_register_callback(driver, on_event, NULL);
+    /* pass driver as context so the callback can query state */
+    isd04_driver_register_callback(driver, on_event, driver);
 
     /* configure microstepping */
     isd04_driver_set_microstep(driver, ISD04_MICROSTEP_1600);
-    Isd04Microstep ms = isd04_driver_get_microstep(driver);
-    (void)ms;
 
     isd04_driver_start(driver);
     isd04_driver_set_speed(driver, 50);
 
-    /* periodically advance position and read it */
+    /* periodically advance position */
     isd04_driver_step(driver, 1); /* call from a timer/interrupt */
-    int32_t pos = isd04_driver_get_position(driver);
-    (void)pos;
 
     /* ... */
 

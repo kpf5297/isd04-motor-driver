@@ -184,6 +184,7 @@ void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode)
         ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(new_mode));
         driver->microstep = new_mode;
         if (driver->callback) {
+            /* inform user code that the microstepping mode was updated */
             driver->callback(ISD04_EVENT_MICROSTEP_CHANGED, driver->callback_context);
         }
     }
@@ -232,6 +233,7 @@ void isd04_driver_set_position(Isd04Driver *driver, int32_t position)
     if (driver->current_position != position) {
         driver->current_position = position;
         if (driver->callback) {
+            /* notify listeners of the new absolute position */
             driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
         }
     }
@@ -244,6 +246,7 @@ void isd04_driver_step(Isd04Driver *driver, int32_t steps)
     }
     driver->current_position += steps;
     if (driver->callback) {
+        /* emit event each time position moves */
         driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
     }
 }
