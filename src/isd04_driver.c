@@ -195,6 +195,8 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->current_speed = 0;
     driver->current_position = 0;
     driver->running = false;
+    driver->enabled = true;
+    driver->last_step_tick = 0U;
     driver->callback = NULL;
     driver->callback_context = NULL;
     driver->microstep = config->microstep;
@@ -279,6 +281,7 @@ void isd04_driver_enable(Isd04Driver *driver, bool enable)
     if (!driver) {
         return;
     }
+    bool was_enabled = driver->enabled;
     if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin,
                                enable ? GPIO_PIN_SET : GPIO_PIN_RESET)) {
         driver->error = true;
@@ -286,6 +289,10 @@ void isd04_driver_enable(Isd04Driver *driver, bool enable)
             driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
         }
     }
+    if (enable && !was_enabled) {
+        ISD04_DELAY_MS(ISD04_ENABLE_WAKE_DELAY_MS);
+    }
+    driver->enabled = enable;
 }
 
 void isd04_driver_pulse(Isd04Driver *driver)
@@ -293,6 +300,18 @@ void isd04_driver_pulse(Isd04Driver *driver)
     if (!driver) {
         return;
     }
+#if ISD04_STEP_MIN_INTERVAL_US > 0U
+    uint32_t min_ms = ISD04_STEP_MIN_INTERVAL_US / 1000U;
+    if (driver->last_step_tick != 0U) {
+        if (min_ms > 0U) {
+            while (!ISD04_DELAY_ELAPSED(driver->last_step_tick, min_ms)) {
+                ISD04_DELAY_MS(1U);
+            }
+        } else {
+            ISD04_DELAY_US(ISD04_STEP_MIN_INTERVAL_US);
+        }
+    }
+#endif
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
         driver->error = true;
         if (driver->callback) {
@@ -311,6 +330,7 @@ void isd04_driver_pulse(Isd04Driver *driver)
         }
         return;
     }
+    driver->last_step_tick = ISD04_DELAY_START();
     isd04_driver_step(driver, 1);
 }
 
