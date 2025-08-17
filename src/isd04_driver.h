@@ -200,6 +200,10 @@ typedef struct {
     int32_t current_position;
     /** Indicates whether the motor is running. */
     bool running;
+    /** Set when the driver outputs are enabled. */
+    bool enabled;
+    /** Tick recorded when the last step pulse was issued. */
+    Isd04DelayTick last_step_tick;
     /** Registered event callback. */
     Isd04EventCallback callback;
     /** User supplied context passed to the callback. */
