@@ -61,6 +61,11 @@ int main(void) {
 }
 ```
 
+The driver validates that the provided GPIO pins fall within the target MCU's
+pin count.  Override `ISD04_GPIO_PIN_COUNT` at compile time if your platform
+exposes a different number of pins per port.  Applications may use the
+`ISD04_VALIDATE_PIN(pin)` macro for their own static assertions.
+
 `isd04_driver_pulse` toggles the step pin and updates the driver's internal
 position counter. If step pulses are produced elsewhere, call
 `isd04_driver_step` to keep the tracked position synchronized.
@@ -81,3 +86,7 @@ Define `USE_HAL_DRIVER` to build against the STM32 HAL and `CMSIS_OS_VERSION`
 when a CMSIS-RTOS is present.  Projects may also set
 `ISD04_STEP_PULSE_DELAY_MS` to a non-zero value to enforce a minimum step pulse
 width using the delay helpers.
+
+## Version history
+
+* **1.0.1** – Added pin range validation and `ISD04_VALIDATE_PIN` macro.
