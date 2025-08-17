@@ -28,7 +28,37 @@ typedef enum {
     ISD04_EVENT_STOPPED,
     /** Motor speed has been updated. */
     ISD04_EVENT_SPEED_CHANGED,
+    /** Microstep resolution has changed. */
+    ISD04_EVENT_MICROSTEP_CHANGED,
 } Isd04Event;
+
+/** Supported microstep resolutions. */
+typedef enum {
+    ISD04_MICROSTEP_200 = 200,
+    ISD04_MICROSTEP_400 = 400,
+    ISD04_MICROSTEP_800 = 800,
+    ISD04_MICROSTEP_1600 = 1600,
+    ISD04_MICROSTEP_3200 = 3200,
+} Isd04Microstep;
+
+/** DIP switch patterns for microstep modes. */
+#define ISD04_MICROSTEP_200_BITS   0x0
+#define ISD04_MICROSTEP_400_BITS   0x1
+#define ISD04_MICROSTEP_800_BITS   0x2
+#define ISD04_MICROSTEP_1600_BITS  0x3
+#define ISD04_MICROSTEP_3200_BITS  0x7
+
+/** Map a microstep mode to its DIP switch bit pattern. */
+#define ISD04_MICROSTEP_TO_BITS(mode) \
+    ((mode) == ISD04_MICROSTEP_200 ? ISD04_MICROSTEP_200_BITS : \
+     (mode) == ISD04_MICROSTEP_400 ? ISD04_MICROSTEP_400_BITS : \
+     (mode) == ISD04_MICROSTEP_800 ? ISD04_MICROSTEP_800_BITS : \
+     (mode) == ISD04_MICROSTEP_1600 ? ISD04_MICROSTEP_1600_BITS : \
+     ISD04_MICROSTEP_3200_BITS)
+
+/** Apply a DIP switch pattern to hardware (stub). */
+#define ISD04_APPLY_MICROSTEP(bits) \
+    do { (void)(bits); } while (0)
 
 /** Callback invoked when a driver event occurs. */
 typedef void (*Isd04EventCallback)(Isd04Event event, void *context);
@@ -57,6 +87,8 @@ typedef struct {
     Isd04EventCallback callback;
     /** User supplied context passed to the callback. */
     void *callback_context;
+    /** Current microstep resolution. */
+    Isd04Microstep microstep;
     /** Current behavioral state of the driver. */
     const struct Isd04State *state;
 } Isd04Driver;
@@ -65,6 +97,8 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config);
 void isd04_driver_start(Isd04Driver *driver);
 void isd04_driver_stop(Isd04Driver *driver);
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
+void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode);
+Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver);
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context);
 Isd04Driver *isd04_driver_get_instance(void);
 Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
