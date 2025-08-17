@@ -135,6 +135,7 @@ position counter. If step pulses are produced elsewhere, call
 The driver exposes macros for integrating with platform-specific delay mechanisms:
 
 * `ISD04_DELAY_MS(ms)` – blocking delay for a number of milliseconds.
+* `ISD04_DELAY_US(us)` – blocking delay for a number of microseconds.
 * `ISD04_DELAY_START()` / `ISD04_DELAY_ELAPSED(start, ms)` – capture a tick
   count and test whether a duration has passed without blocking. For example:
 
@@ -149,7 +150,9 @@ These macros map to `HAL_Delay`/`HAL_GetTick` when `USE_HAL_DRIVER` is defined
 and to `osDelay`/`osKernelSysTick` when `CMSIS_OS_VERSION` is defined. When
 neither symbol is present they become no-ops so the driver can be built for host
 tests. Projects may also set `ISD04_STEP_PULSE_DELAY_MS` to enforce a minimum
-step pulse width using the delay helpers.
+step pulse width using the delay helpers. Additional tuning is available via
+`ISD04_STEP_MIN_INTERVAL_US` to specify a low-level pulse width and
+`ISD04_ENABLE_WAKE_DELAY_MS` to insert a delay after enabling the driver.
 
 ## Version history
 

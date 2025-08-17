@@ -47,6 +47,16 @@ typedef uint32_t Isd04DelayTick;
 #define ISD04_DELAY_ELAPSED(start, ms) ((void)(start), (void)(ms), true)
 #endif
 
+#ifndef ISD04_DELAY_US
+#define ISD04_DELAY_US(us)      /* platform-specific microsecond delay */
+#endif
+#ifndef ISD04_STEP_MIN_INTERVAL_US
+#define ISD04_STEP_MIN_INTERVAL_US 4U  /* min low-level pulse width */
+#endif
+#ifndef ISD04_ENABLE_WAKE_DELAY_MS
+#define ISD04_ENABLE_WAKE_DELAY_MS 1U  /* delay after enabling driver */
+#endif
+
 #define ISD04_DRIVER_VERSION_MAJOR 1
 #define ISD04_DRIVER_VERSION_MINOR 0
 #define ISD04_DRIVER_VERSION_PATCH 1
