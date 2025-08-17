@@ -176,39 +176,178 @@ typedef struct {
     bool error;
 } Isd04Driver;
 
+/**
+ * Obtain the semantic version string of the driver.
+ *
+ * @return NUL-terminated version string in the form "major.minor.patch".
+ */
 const char *isd04_driver_get_version(void);
+
+/**
+ * Populate a configuration structure with library defaults.
+ *
+ * @param[out] config Configuration structure to initialise. Must not be NULL.
+ */
 void isd04_driver_get_default_config(Isd04Config *config);
+
+/**
+ * Initialise a driver instance.
+ *
+ * Configures hardware pins and applies the provided configuration. The
+ * driver's error flag is set and the operation aborted if any required
+ * pointers are NULL or if initial hardware writes fail.
+ *
+ * @param[out] driver Driver instance to initialise.
+ * @param[in]  config Static configuration values.
+ * @param[in]  hw     Hardware pin definitions.
+ */
 void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd04Hardware *hw);
+
+/**
+ * Transition the driver to the running state.
+ *
+ * Emits ::ISD04_EVENT_STARTED on success. Does nothing if @p driver is NULL.
+ *
+ * @param driver Driver instance to start.
+ */
 void isd04_driver_start(Isd04Driver *driver);
+
+/**
+ * Halt the motor and transition to the stopped state.
+ *
+ * Emits ::ISD04_EVENT_STOPPED on success. Does nothing if @p driver is NULL.
+ *
+ * @param driver Driver instance to stop.
+ */
 void isd04_driver_stop(Isd04Driver *driver);
+
+/**
+ * Update the commanded motor speed.
+ *
+ * The value is clamped to the range configured in ::Isd04Config. Generates
+ * ::ISD04_EVENT_SPEED_CHANGED when the speed actually changes.
+ *
+ * @param driver Driver instance.
+ * @param speed  New speed in steps per second.
+ */
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
+
+/**
+ * Configure the microstepping resolution.
+ *
+ * Applies the DIP switch pattern corresponding to @p mode and emits
+ * ::ISD04_EVENT_MICROSTEP_CHANGED when the mode changes.
+ *
+ * @param driver Driver instance.
+ * @param mode   Desired microstepping mode.
+ */
 void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode);
+
+/**
+ * Retrieve the currently configured microstepping mode.
+ *
+ * @param driver Driver instance or NULL.
+ * @return Current microstep setting, or ::ISD04_MICROSTEP_200 if @p driver is
+ *         NULL.
+ */
 Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver);
+
+/**
+ * Set the motor rotation direction.
+ *
+ * Writes to the direction GPIO pin. If the write fails the driver's error flag
+ * is set and ::ISD04_EVENT_ERROR is emitted via the registered callback.
+ *
+ * @param driver  Driver instance.
+ * @param forward @c true for forward rotation, @c false for reverse.
+ */
 void isd04_driver_set_direction(Isd04Driver *driver, bool forward);
+
+/**
+ * Enable or disable the motor driver.
+ *
+ * Writes to the enable GPIO pin. On failure the driver's error flag is set and
+ * ::ISD04_EVENT_ERROR is emitted.
+ *
+ * @param driver Driver instance.
+ * @param enable @c true to enable, @c false to disable.
+ */
 void isd04_driver_enable(Isd04Driver *driver, bool enable);
+
+/**
+ * Generate a single step pulse on the STEP pin.
+ *
+ * The pin is driven high then low. If @c ISD04_STEP_PULSE_DELAY_MS is non-zero
+ * a delay of at least that many milliseconds is inserted between edges using
+ * ::ISD04_DELAY_MS to satisfy the driver's minimum pulse width requirement.
+ * Any GPIO failure sets the driver's error flag and emits
+ * ::ISD04_EVENT_ERROR.
+ *
+ * @param driver Driver instance.
+ */
 void isd04_driver_pulse(Isd04Driver *driver);
+
+/**
+ * Register a callback for driver events.
+ *
+ * The callback will be invoked from various API calls when notable events
+ * occur, including ::ISD04_EVENT_ERROR when hardware access fails.
+ *
+ * @param driver   Driver instance.
+ * @param callback Callback function pointer (may be NULL to disable).
+ * @param context  User-provided pointer passed to @p callback.
+ */
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context);
+
+/**
+ * Obtain the singleton driver instance.
+ *
+ * Allocates the instance on first use. Returns NULL if memory allocation
+ * fails.
+ *
+ * @return Pointer to the driver instance or NULL on allocation failure.
+ */
 Isd04Driver *isd04_driver_get_instance(void);
+
+/**
+ * Retrieve the driver's current state identifier.
+ *
+ * @param driver Driver instance or NULL.
+ * @return Current ::Isd04StateId, or ::ISD04_STATE_STOPPED if @p driver is
+ *         NULL.
+ */
 Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
 
 /**
  * Retrieve the driver's notion of the current motor position in steps.
+ *
+ * @param driver Driver instance or NULL.
+ * @return Current position, or 0 if @p driver is NULL.
  */
 int32_t isd04_driver_get_position(const Isd04Driver *driver);
 
 /**
  * Set the driver's current motor position counter.
  *
- * Emits ::ISD04_EVENT_POSITION_CHANGED if the value differs.
+ * Emits ::ISD04_EVENT_POSITION_CHANGED if the value differs from the previous
+ * position.
+ *
+ * @param driver   Driver instance.
+ * @param position New absolute position in steps.
  */
 void isd04_driver_set_position(Isd04Driver *driver, int32_t position);
 
 /**
  * Advance the driver's internal position counter.
  *
- * Call this periodically (e.g., from a timer interrupt) with the number of
+ * Call this periodically (e.g. from a timer interrupt) with the number of
  * steps that have been issued to the motor since the last call to keep the
- * position in sync with actual movement.
+ * position in sync with actual movement. Emits ::ISD04_EVENT_POSITION_CHANGED
+ * on every invocation.
+ *
+ * @param driver Driver instance.
+ * @param steps  Number of steps taken since the previous call (may be
+ *               negative).
  */
 void isd04_driver_step(Isd04Driver *driver, int32_t steps);
 
