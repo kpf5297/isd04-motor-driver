@@ -282,8 +282,10 @@ void isd04_driver_enable(Isd04Driver *driver, bool enable)
         return;
     }
     bool was_enabled = driver->enabled;
-    if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin,
-                               enable ? GPIO_PIN_SET : GPIO_PIN_RESET)) {
+    GPIO_PinState level = enable
+        ? (ISD04_ENA_ACTIVE_LEVEL == GPIO_PIN_SET ? GPIO_PIN_RESET : GPIO_PIN_SET)
+        : ISD04_ENA_ACTIVE_LEVEL;
+    if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin, level)) {
         driver->error = true;
         if (driver->callback) {
             driver->callback(ISD04_EVENT_ERROR, driver->callback_context);

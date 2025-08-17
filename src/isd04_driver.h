@@ -57,6 +57,10 @@ typedef uint32_t Isd04DelayTick;
 #define ISD04_ENABLE_WAKE_DELAY_MS 1U  /* delay after enabling driver */
 #endif
 
+#ifndef ISD04_ENA_ACTIVE_LEVEL
+#define ISD04_ENA_ACTIVE_LEVEL GPIO_PIN_RESET  /* active-low disable */
+#endif
+
 #define ISD04_DRIVER_VERSION_MAJOR 1
 #define ISD04_DRIVER_VERSION_MINOR 0
 #define ISD04_DRIVER_VERSION_PATCH 1

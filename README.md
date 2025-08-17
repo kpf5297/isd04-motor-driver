@@ -21,6 +21,10 @@ All three logic inputs default high when left floating. Drive STEP high then
 low to advance a microstep, set DIR high for forward rotation and low for
 reverse, and pull ENA low to enable the outputs (high disables the driver).
 
+The disable polarity of the ENA pin is controlled by the `ISD04_ENA_ACTIVE_LEVEL`
+macro. By default it assumes an active-low disable (`GPIO_PIN_RESET`); define it
+as `GPIO_PIN_SET` if your hardware disables the driver with a high level.
+
 ## Usage
 
 ```c
