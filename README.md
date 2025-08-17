@@ -21,6 +21,11 @@ int main(void) {
     isd04_driver_init(driver, &config);
     isd04_driver_register_callback(driver, on_event, NULL);
 
+    /* configure microstepping */
+    isd04_driver_set_microstep(driver, ISD04_MICROSTEP_1600);
+    Isd04Microstep ms = isd04_driver_get_microstep(driver);
+    (void)ms;
+
     isd04_driver_start(driver);
     isd04_driver_set_speed(driver, 50);
 

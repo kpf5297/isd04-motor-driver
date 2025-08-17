@@ -7,6 +7,8 @@ static Isd04Driver *instance = NULL;
 
 /** Clamp speed to the allowable range. */
 static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
+/** Clamp microstep mode to the allowable range. */
+static Isd04Microstep clamp_microstep(Isd04Microstep mode);
 
 /** State object defining behaviour for driver operations. */
 typedef struct Isd04State {
@@ -139,6 +141,7 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config)
     driver->running = false;
     driver->callback = NULL;
     driver->callback_context = NULL;
+    driver->microstep = ISD04_MICROSTEP_200;
     change_state(driver, &stopped_state);
 }
 
@@ -167,6 +170,31 @@ void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed)
     }
 
     driver->state->set_speed(driver, speed);
+}
+
+void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode)
+{
+    if (!driver) {
+        return;
+    }
+
+    Isd04Microstep new_mode = clamp_microstep(mode);
+    if (new_mode != driver->microstep) {
+        ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(new_mode));
+        driver->microstep = new_mode;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_MICROSTEP_CHANGED, driver->callback_context);
+        }
+    }
+}
+
+Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver)
+{
+    if (!driver) {
+        return ISD04_MICROSTEP_200;
+    }
+
+    return driver->microstep;
 }
 
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context)
@@ -198,5 +226,22 @@ static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed)
     }
 
     return speed;
+}
+
+static Isd04Microstep clamp_microstep(Isd04Microstep mode)
+{
+    switch (mode) {
+    case ISD04_MICROSTEP_200:
+    case ISD04_MICROSTEP_400:
+    case ISD04_MICROSTEP_800:
+    case ISD04_MICROSTEP_1600:
+    case ISD04_MICROSTEP_3200:
+        return mode;
+    default:
+        if (mode < ISD04_MICROSTEP_200) {
+            return ISD04_MICROSTEP_200;
+        }
+        return ISD04_MICROSTEP_3200;
+    }
 }
 
