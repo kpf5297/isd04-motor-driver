@@ -14,6 +14,11 @@ static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinS
 }
 #endif
 
+#define ISD04_DRIVER_VERSION_MAJOR 1
+#define ISD04_DRIVER_VERSION_MINOR 0
+#define ISD04_DRIVER_VERSION_PATCH 0
+#define ISD04_DRIVER_VERSION_STRING "1.0.0"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -133,6 +138,7 @@ typedef struct {
     const struct Isd04State *state;
 } Isd04Driver;
 
+const char *isd04_driver_get_version(void);
 void isd04_driver_get_default_config(Isd04Config *config);
 void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd04Hardware *hw);
 void isd04_driver_start(Isd04Driver *driver);
