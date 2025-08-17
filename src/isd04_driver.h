@@ -30,6 +30,8 @@ typedef enum {
     ISD04_EVENT_SPEED_CHANGED,
     /** Microstep resolution has changed. */
     ISD04_EVENT_MICROSTEP_CHANGED,
+    /** Motor position has changed. */
+    ISD04_EVENT_POSITION_CHANGED,
 } Isd04Event;
 
 /** Supported microstep resolutions. */
@@ -81,6 +83,8 @@ typedef struct {
     Isd04Config config;
     /** Current motor speed. */
     int32_t current_speed;
+    /** Current motor position in steps. */
+    int32_t current_position;
     /** Indicates whether the motor is running. */
     bool running;
     /** Registered event callback. */
@@ -102,6 +106,27 @@ Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver);
 void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback callback, void *context);
 Isd04Driver *isd04_driver_get_instance(void);
 Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
+
+/**
+ * Retrieve the driver's notion of the current motor position in steps.
+ */
+int32_t isd04_driver_get_position(const Isd04Driver *driver);
+
+/**
+ * Set the driver's current motor position counter.
+ *
+ * Emits ::ISD04_EVENT_POSITION_CHANGED if the value differs.
+ */
+void isd04_driver_set_position(Isd04Driver *driver, int32_t position);
+
+/**
+ * Advance the driver's internal position counter.
+ *
+ * Call this periodically (e.g., from a timer interrupt) with the number of
+ * steps that have been issued to the motor since the last call to keep the
+ * position in sync with actual movement.
+ */
+void isd04_driver_step(Isd04Driver *driver, int32_t steps);
 
 #ifdef __cplusplus
 }
