@@ -32,7 +32,37 @@ typedef uint32_t Isd04DelayTick;
 #endif
 
 #ifndef ISD04_DELAY_US
-#define ISD04_DELAY_US(us)      /* platform-specific microsecond delay */
+#ifdef CMSIS_OS_VERSION
+static inline void ISD04_DELAY_US(uint32_t us)
+{
+    uint32_t ms = us / 1000U;
+    if (ms > 0U) {
+        osDelay(ms);
+    }
+    uint32_t start = osKernelSysTick();
+    uint32_t ticks = (us % 1000U) * (osKernelGetTickFreq() / 1000U);
+    while ((uint32_t)(osKernelSysTick() - start) < ticks) {
+    }
+}
+#elif defined(USE_HAL_DRIVER)
+static inline void ISD04_DELAY_US(uint32_t us)
+{
+    uint32_t ms = us / 1000U;
+    if (ms > 0U) {
+        HAL_Delay(ms);
+    }
+    uint32_t start = DWT->CYCCNT;
+    uint32_t cycles = (us % 1000U) * (SystemCoreClock / 1000000U);
+    while ((DWT->CYCCNT - start) < cycles) {
+    }
+}
+#else
+static inline void ISD04_DELAY_US(uint32_t us)
+{
+    (void)us;
+    /* Stub delay; precise microsecond timing is not available on host builds. */
+}
+#endif
 #endif
 
 #ifndef ISD04_STEP_MIN_INTERVAL_US
