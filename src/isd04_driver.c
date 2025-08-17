@@ -315,7 +315,7 @@ void isd04_driver_pulse(Isd04Driver *driver)
 #if ISD04_STEP_CONTROL_TIMER
     if (driver->step_timer) {
         if (HAL_TIM_Base_Start(driver->step_timer) != HAL_OK ||
-            HAL_TIM_Base_Stop(driver->step_timer) != HAL_OK) {
+        if (HAL_TIM_Base_Start(driver->step_timer) != HAL_OK) {
             driver->error = true;
             if (driver->callback) {
                 driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
