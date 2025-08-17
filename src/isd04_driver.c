@@ -183,6 +183,13 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
         return;
     }
 
+    if (!ISD04_VALIDATE_PIN(hw->stp_pin) ||
+        !ISD04_VALIDATE_PIN(hw->dir_pin) ||
+        !ISD04_VALIDATE_PIN(hw->ena_pin)) {
+        driver->error = true;
+        return;
+    }
+
     driver->config = *config;
     driver->hw = *hw;
     driver->current_speed = 0;

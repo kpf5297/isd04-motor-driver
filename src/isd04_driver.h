@@ -49,8 +49,29 @@ typedef uint32_t Isd04DelayTick;
 
 #define ISD04_DRIVER_VERSION_MAJOR 1
 #define ISD04_DRIVER_VERSION_MINOR 0
-#define ISD04_DRIVER_VERSION_PATCH 0
-#define ISD04_DRIVER_VERSION_STRING "1.0.0"
+#define ISD04_DRIVER_VERSION_PATCH 1
+#define ISD04_DRIVER_VERSION_STRING "1.0.1"
+
+/**
+ * Number of GPIO pins available on the target MCU.
+ *
+ * Projects may override this definition at compile time if the platform
+ * exposes a different number of GPIOs per port.  The default assumes a
+ * 16-pin port layout commonly found on STM32 devices.
+ */
+#ifndef ISD04_GPIO_PIN_COUNT
+#define ISD04_GPIO_PIN_COUNT 16U
+#endif
+
+/**
+ * Validate that a GPIO pin definition does not exceed the MCU's pin count.
+ *
+ * This macro evaluates to @c true when @p pin falls within the permitted
+ * range of single-bit pin masks.  It may be used in static assertions or at
+ * run time to guard against invalid configuration values.
+ */
+#define ISD04_VALIDATE_PIN(pin) \
+    ((pin) > 0U && (pin) < (1U << ISD04_GPIO_PIN_COUNT))
 
 #ifdef __cplusplus
 extern "C" {
@@ -79,7 +100,12 @@ typedef struct {
     uint16_t phase_current_ma;
 } Isd04Config;
 
-/** Hardware definition for ISD04 control pins. */
+/** Hardware definition for ISD04 control pins.
+ *
+ * Each @c *_pin field must specify a single-bit mask that falls within the
+ * target MCU's GPIO pin count (see ::ISD04_GPIO_PIN_COUNT).  Values outside
+ * this range will cause ::isd04_driver_init to set the driver's error flag.
+ */
 typedef struct {
     GPIO_TypeDef *stp_port;
     uint16_t stp_pin;
@@ -195,7 +221,8 @@ void isd04_driver_get_default_config(Isd04Config *config);
  *
  * Configures hardware pins and applies the provided configuration. The
  * driver's error flag is set and the operation aborted if any required
- * pointers are NULL or if initial hardware writes fail.
+ * pointers are NULL, if any @c *_pin exceeds ::ISD04_GPIO_PIN_COUNT, or if
+ * initial hardware writes fail.
  *
  * @param[out] driver Driver instance to initialise.
  * @param[in]  config Static configuration values.
