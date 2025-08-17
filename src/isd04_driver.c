@@ -327,7 +327,25 @@ void isd04_driver_pulse(Isd04Driver *driver)
         if (driver->callback) {
             driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
         }
-        return;
+        /* Fallback to GPIO-based pulse generation if no timer is bound */
+        if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+            return;
+        }
+#if ISD04_STEP_PULSE_DELAY_MS > 0U
+        /* Ensure minimum pulse width using the delay helpers. */
+        ISD04_DELAY_MS(ISD04_STEP_PULSE_DELAY_MS);
+#endif
+        if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET)) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+            return;
+        }
     }
 #else
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
