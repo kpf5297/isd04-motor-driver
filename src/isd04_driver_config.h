@@ -6,25 +6,26 @@
 /*
  * Configuration header for the ISD04 motor driver.
  *
- * Applications may override any of the macros in this file at compile time to
- * tune the driver's behaviour. Delay helpers integrate with either CMSIS-RTOS
- * v2 or the STM32 HAL depending on which environment macros are defined. When
- * neither environment is present, stub implementations are provided so that the
- * driver can be built for host-side tests.
+ * This file centralises all user-tunable build options.  Projects may override
+ * any of the macros below at compile time to adapt the driver to their
+ * platform.  Delay helpers automatically integrate with either CMSIS-RTOS v2 or
+ * the STM32 HAL depending on which environment macros are defined.  When neither
+ * environment is detected, the delay helpers become no-ops so that the driver
+ * can still be built for host-side tests.
  */
 
-#ifdef CMSIS_OS_VERSION
-#include "cmsis_os.h"
+#ifdef CMSIS_OS_VERSION  /* CMSIS-RTOS v2 environment */
+#include "cmsis_os2.h"
 #define ISD04_DELAY_MS(ms)            osDelay(ms)
 typedef uint32_t Isd04DelayTick;
 #define ISD04_DELAY_START()           (osKernelSysTick())
 #define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(osKernelSysTick() - (start)) >= (ms))
-#elif defined(USE_HAL_DRIVER)
+#elif defined(USE_HAL_DRIVER)  /* bare-metal STM32 HAL */
 #define ISD04_DELAY_MS(ms)            HAL_Delay(ms)
 typedef uint32_t Isd04DelayTick;
 #define ISD04_DELAY_START()           (HAL_GetTick())
 #define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(HAL_GetTick() - (start)) >= (ms))
-#else
+#else  /* host-side build or tests */
 #define ISD04_DELAY_MS(ms)            do { (void)(ms); } while (0)
 typedef uint32_t Isd04DelayTick;
 #define ISD04_DELAY_START()           (0U)
@@ -41,7 +42,7 @@ static inline void ISD04_DELAY_US(uint32_t us)
     }
     uint32_t start = osKernelSysTick();
     uint32_t ticks = (us % 1000U) * osKernelGetTickFreq() / 1000000U;
-    while (ISD04_TICK_ELAPSED(osKernelSysTick(), start) < ticks) {
+    while ((osKernelSysTick() - start) < ticks) {
     }
 }
 #elif defined(USE_HAL_DRIVER)
@@ -56,7 +57,7 @@ static inline void ISD04_DELAY_US(uint32_t us)
     while ((DWT->CYCCNT - start) < cycles) {
     }
 }
-#else
+#else  /* host-side build */
 static inline void ISD04_DELAY_US(uint32_t us)
 {
     (void)us;
