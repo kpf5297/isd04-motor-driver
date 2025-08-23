@@ -410,9 +410,9 @@ Isd04StateId isd04_driver_get_state(const Isd04Driver *driver)
     if (!driver) {
         return ISD04_STATE_STOPPED;
     }
-    isd04_lock((Isd04Driver *)driver);
+    isd04_lock(driver);
     Isd04StateId id = driver->state ? driver->state->id : ISD04_STATE_STOPPED;
-    isd04_unlock((Isd04Driver *)driver);
+    isd04_unlock(driver);
     return id;
 }
 
