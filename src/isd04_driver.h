@@ -5,7 +5,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#if __has_include("cmsis_os2.h")
+#include "isd04_driver_config.h"
+
+#if ISD04_USE_CMSIS
 #include "cmsis_os2.h"
 #else
 typedef void *osMutexId_t;
@@ -17,7 +19,7 @@ static inline void osMutexRelease(osMutexId_t id) { (void)id; }
 #endif
 #endif
 
-#if __has_include("stm32f4xx_hal.h")
+#if ISD04_USE_HAL
 #include "stm32f4xx_hal.h"
 #else
 typedef struct GPIO_TypeDef GPIO_TypeDef;
@@ -27,10 +29,8 @@ static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinS
 }
 #endif
 
-#include "isd04_driver_config.h"
-
 #if ISD04_STEP_CONTROL_TIMER
-#if __has_include("stm32f4xx_hal_tim.h")
+#if ISD04_USE_HAL
 #include "stm32f4xx_hal_tim.h"
 #else
 typedef struct {

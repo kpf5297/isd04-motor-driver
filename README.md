@@ -1,6 +1,6 @@
 # ISD04 Motor Driver
 
-Portable C driver library for the ISD04 stepper motor driver IC with STM32 HAL integration.
+Portable C driver library for the ISD04 stepper motor driver IC with optional STM32 HAL or CMSIS-RTOS integration configured via macros.
 
 ## Hardware Setup
 
@@ -40,17 +40,24 @@ isd04_driver_pulse(driver);
 ## Key Features
 
 - **Thread-safe**: All public APIs are mutex-protected for multi-threaded applications
-- **Platform support**: STM32 HAL and CMSIS-RTOS v2 integration with fallback for testing  
+- **Platform support**: Optional STM32 HAL or CMSIS-RTOS v2 integration selected via config macros with fallback implementations for testing
 - **Timer integration**: Hardware timer support for precise step pulse generation
 - **Error handling**: Built-in GPIO validation and error reporting via event callbacks
 - **Configurable timing**: Adjustable step intervals and wake-up delays
 
 ## Configuration
 
-Key compile-time options:
-- `ISD04_ENA_ACTIVE_LEVEL`: Enable pin polarity (default: active-low)
-- `ISD04_STEP_MIN_INTERVAL_US`: Minimum step pulse interval (default: 4μs)
-- `ISD04_ENABLE_WAKE_DELAY_MS`: Driver wake-up delay (default: 1ms)
+All compile-time options live in `src/isd04_driver_config.h`. Enable features by
+setting the macros below to `1` or disable them with `0`; no automatic detection
+is performed.
+
+Key options include:
+- `ISD04_USE_CMSIS`: integrate with CMSIS-RTOS v2 (default: 0)
+- `ISD04_USE_HAL`: use STM32 HAL for GPIO/delay support (default: 0)
+- `ISD04_STEP_CONTROL_TIMER`: drive STEP via a bound hardware timer instead of toggling the GPIO directly (default: 0)
+- `ISD04_ENA_ACTIVE_LEVEL`: enable pin polarity (default: active-low)
+- `ISD04_STEP_MIN_INTERVAL_US`: minimum step pulse interval (default: 4μs)
+- `ISD04_ENABLE_WAKE_DELAY_MS`: driver wake-up delay (default: 1ms)
 - `ISD04_GPIO_PIN_COUNT`: GPIO pin validation range (default: 16)
 
 ## API Reference
