@@ -275,6 +275,17 @@ void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed)
     isd04_unlock(driver);
 }
 
+int32_t isd04_driver_get_speed(Isd04Driver *driver)
+{
+    if (!driver) {
+        return 0;
+    }
+    isd04_lock(driver);
+    int32_t speed = driver->current_speed;
+    isd04_unlock(driver);
+    return speed;
+}
+
 void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode)
 {
     if (!driver) {
