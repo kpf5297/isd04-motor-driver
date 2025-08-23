@@ -18,7 +18,6 @@ static inline void isd04_unlock(Isd04Driver *driver) {
 static Isd04Driver *instance = NULL;
 static osMutexId_t instance_mutex = NULL;
 
-
 /**
  * Wrapper around HAL_GPIO_WritePin that returns success/failure.
  *
@@ -112,7 +111,7 @@ static void stopped_start(Isd04Driver *driver)
 
 static void stopped_stop(Isd04Driver *driver)
 {
-    (void)driver; /* already stopped */
+    (void)driver; /* Already in stopped state */
 }
 
 static void stopped_set_speed(Isd04Driver *driver, int32_t speed)
@@ -134,7 +133,7 @@ static void running_enter(Isd04Driver *driver)
 
 static void running_start(Isd04Driver *driver)
 {
-    (void)driver; /* already running */
+    (void)driver; /* Already in running state */
 }
 
 static void running_stop(Isd04Driver *driver)
@@ -273,14 +272,14 @@ void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode)
         ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(new_mode));
         driver->microstep = new_mode;
         if (driver->callback) {
-            /* inform user code that the microstepping mode was updated */
+            /* Inform user code that the microstepping mode was updated */
             driver->callback(ISD04_EVENT_MICROSTEP_CHANGED, driver->callback_context);
         }
     }
     isd04_unlock(driver);
 }
 
-Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver)
+Isd04Microstep isd04_driver_get_microstep(Isd04Driver *driver)
 {
     if (!driver) {
         return ISD04_MICROSTEP_200;
@@ -377,7 +376,7 @@ void isd04_driver_pulse(Isd04Driver *driver)
         return;
     }
 #if ISD04_STEP_PULSE_DELAY_MS > 0U
-    /* Ensure minimum pulse width using the delay helpers. */
+    /* Ensure minimum pulse width using the delay helpers */
     ISD04_DELAY_MS(ISD04_STEP_PULSE_DELAY_MS);
 #endif
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET)) {
@@ -405,7 +404,7 @@ void isd04_driver_register_callback(Isd04Driver *driver, Isd04EventCallback call
     isd04_unlock(driver);
 }
 
-Isd04StateId isd04_driver_get_state(const Isd04Driver *driver)
+Isd04StateId isd04_driver_get_state(Isd04Driver *driver)
 {
     if (!driver) {
         return ISD04_STATE_STOPPED;
@@ -416,14 +415,14 @@ Isd04StateId isd04_driver_get_state(const Isd04Driver *driver)
     return id;
 }
 
-int32_t isd04_driver_get_position(const Isd04Driver *driver)
+int32_t isd04_driver_get_position(Isd04Driver *driver)
 {
     if (!driver) {
         return 0;
     }
-    isd04_lock((Isd04Driver *)driver);
+    isd04_lock(driver);
     int32_t pos = driver->current_position;
-    isd04_unlock((Isd04Driver *)driver);
+    isd04_unlock(driver);
     return pos;
 }
 
@@ -436,7 +435,7 @@ void isd04_driver_set_position(Isd04Driver *driver, int32_t position)
     if (driver->current_position != position) {
         driver->current_position = position;
         if (driver->callback) {
-            /* notify listeners of the new absolute position */
+            /* Notify listeners of the new absolute position */
             driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
         }
     }
@@ -482,7 +481,7 @@ static void step_unlocked(Isd04Driver *driver, int32_t steps)
     }
     driver->current_position += steps;
     if (driver->callback) {
-        /* emit event each time position moves */
+        /* Emit event each time position moves */
         driver->callback(ISD04_EVENT_POSITION_CHANGED, driver->callback_context);
     }
 }

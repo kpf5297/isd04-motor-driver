@@ -52,7 +52,7 @@ typedef TIM_HandleTypeDef Isd04Timer;
  * Validate that a GPIO pin definition does not exceed the MCU's pin count.
  *
  * This macro evaluates to @c true when @p pin falls within the permitted
- * range of single-bit pin masks.  It may be used in static assertions or at
+ * range of single-bit pin masks. It may be used in static assertions or at
  * run time to guard against invalid configuration values.
  */
 #define ISD04_VALIDATE_PIN(pin) \
@@ -88,7 +88,7 @@ typedef struct {
 /** Hardware definition for ISD04 control pins.
  *
  * Each @c *_pin field must specify a single-bit mask that falls within the
- * target MCU's GPIO pin count (see ::ISD04_GPIO_PIN_COUNT).  Values outside
+ * target MCU's GPIO pin count (see ::ISD04_GPIO_PIN_COUNT). Values outside
  * this range will cause ::isd04_driver_init to set the driver's error flag.
  */
 typedef struct {
@@ -272,7 +272,7 @@ void isd04_driver_set_microstep(Isd04Driver *driver, Isd04Microstep mode);
  * @return Current microstep setting, or ::ISD04_MICROSTEP_200 if @p driver is
  *         NULL.
  */
-Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver);
+Isd04Microstep isd04_driver_get_microstep(Isd04Driver *driver);
 
 /**
  * Set the motor rotation direction.
@@ -358,7 +358,7 @@ Isd04Driver *isd04_driver_get_instance(void);
  * @return Current ::Isd04StateId, or ::ISD04_STATE_STOPPED if @p driver is
  *         NULL.
  */
-Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
+Isd04StateId isd04_driver_get_state(Isd04Driver *driver);
 
 /**
  * Retrieve the driver's notion of the current motor position in steps.
@@ -366,7 +366,7 @@ Isd04StateId isd04_driver_get_state(const Isd04Driver *driver);
  * @param driver Driver instance or NULL.
  * @return Current position, or 0 if @p driver is NULL.
  */
-int32_t isd04_driver_get_position(const Isd04Driver *driver);
+int32_t isd04_driver_get_position(Isd04Driver *driver);
 
 /**
  * Set the driver's current motor position counter.
