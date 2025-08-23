@@ -3,6 +3,19 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+
+#if __has_include("cmsis_os2.h")
+#include "cmsis_os2.h"
+#else
+typedef void *osMutexId_t;
+static inline osMutexId_t osMutexNew(const void *attr) { (void)attr; return NULL; }
+static inline void osMutexAcquire(osMutexId_t id, uint32_t timeout) { (void)id; (void)timeout; }
+static inline void osMutexRelease(osMutexId_t id) { (void)id; }
+#ifndef osWaitForever
+#define osWaitForever 0xFFFFFFFFU
+#endif
+#endif
 
 #if __has_include("stm32f4xx_hal.h")
 #include "stm32f4xx_hal.h"
@@ -180,6 +193,8 @@ typedef struct {
     const struct Isd04State *state;
     /** Set when a hardware error has been detected. */
     bool error;
+    /** Mutex protecting driver state. */
+    osMutexId_t mutex;
 } Isd04Driver;
 
 /**
