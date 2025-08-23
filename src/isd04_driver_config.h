@@ -6,21 +6,28 @@
 /*
  * Configuration header for the ISD04 motor driver.
  *
- * This file centralises all user-tunable build options. Projects may override
- * any of the macros below at compile time to adapt the driver to their
- * platform. Delay helpers automatically integrate with either CMSIS-RTOS v2 or
- * the STM32 HAL depending on which environment macros are defined. When neither
- * environment is detected, the delay helpers become no-ops so that the driver
- * can still be built for host-side tests.
+ * This file centralises all user-tunable build options. Projects select the
+ * desired behaviour by setting the macros below to 1 or 0. No automatic
+ * detection is performed.
  */
 
-#ifdef CMSIS_OS_VERSION  /* CMSIS-RTOS v2 environment */
+/* Set to 1 when building for a CMSIS-RTOS v2 environment. */
+#ifndef ISD04_USE_CMSIS
+#define ISD04_USE_CMSIS 0
+#endif
+
+/* Set to 1 when using the STM32 HAL. */
+#ifndef ISD04_USE_HAL
+#define ISD04_USE_HAL 0
+#endif
+
+#if ISD04_USE_CMSIS  /* CMSIS-RTOS v2 environment */
 #include "cmsis_os2.h"
 #define ISD04_DELAY_MS(ms)            osDelay(ms)
 typedef uint32_t Isd04DelayTick;
 #define ISD04_DELAY_START()           (osKernelSysTick())
 #define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(osKernelSysTick() - (start)) >= (ms))
-#elif defined(USE_HAL_DRIVER)  /* Bare-metal STM32 HAL */
+#elif ISD04_USE_HAL  /* Bare-metal STM32 HAL */
 #define ISD04_DELAY_MS(ms)            HAL_Delay(ms)
 typedef uint32_t Isd04DelayTick;
 #define ISD04_DELAY_START()           (HAL_GetTick())
@@ -33,7 +40,7 @@ typedef uint32_t Isd04DelayTick;
 #endif
 
 #ifndef ISD04_DELAY_US
-#ifdef CMSIS_OS_VERSION
+#if ISD04_USE_CMSIS
 static inline void ISD04_DELAY_US(uint32_t us)
 {
     uint32_t ms = us / 1000U;
@@ -45,7 +52,7 @@ static inline void ISD04_DELAY_US(uint32_t us)
     while ((osKernelSysTick() - start) < ticks) {
     }
 }
-#elif defined(USE_HAL_DRIVER)
+#elif ISD04_USE_HAL
 static inline void ISD04_DELAY_US(uint32_t us)
 {
     uint32_t ms = us / 1000U;
