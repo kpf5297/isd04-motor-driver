@@ -286,9 +286,9 @@ Isd04Microstep isd04_driver_get_microstep(const Isd04Driver *driver)
         return ISD04_MICROSTEP_200;
     }
 
-    isd04_lock((Isd04Driver *)driver);
+    isd04_lock(driver);
     Isd04Microstep mode = driver->microstep;
-    isd04_unlock((Isd04Driver *)driver);
+    isd04_unlock(driver);
     return mode;
 }
 
