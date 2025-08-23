@@ -192,6 +192,18 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->mutex = osMutexNew(NULL);
     driver->error = false;
 
+#if ISD04_STEP_CONTROL_TIMER
+    if (!hw->dir_port || !hw->ena_port) {
+        driver->error = true;
+        return;
+    }
+
+    if (!ISD04_VALIDATE_PIN(hw->dir_pin) ||
+        !ISD04_VALIDATE_PIN(hw->ena_pin)) {
+        driver->error = true;
+        return;
+    }
+#else
     if (!hw->stp_port || !hw->dir_port || !hw->ena_port) {
         driver->error = true;
         return;
@@ -203,6 +215,7 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
         driver->error = true;
         return;
     }
+#endif
 
     driver->config = *config;
     driver->hw = *hw;
@@ -359,7 +372,18 @@ void isd04_driver_pulse(Isd04Driver *driver)
         isd04_unlock(driver);
         return;
     }
-    if (HAL_TIM_Base_Start(driver->step_timer) != HAL_OK) {
+    // Configure timer for one-shot mode to generate a single pulse
+    // Stop any ongoing PWM first
+    HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1);
+    
+    // Reset the timer counter
+    __HAL_TIM_SET_COUNTER(driver->step_timer, 0);
+    
+    // Configure timer for one-shot mode (single pulse)
+    driver->step_timer->Instance->CR1 |= TIM_CR1_OPM;  // One Pulse Mode
+    
+    // Start PWM for a single pulse
+    if (HAL_TIM_PWM_Start(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
         driver->error = true;
         if (driver->callback) {
             driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
@@ -367,6 +391,9 @@ void isd04_driver_pulse(Isd04Driver *driver)
         isd04_unlock(driver);
         return;
     }
+    
+    // Timer will automatically stop after one pulse cycle
+    // No need for manual stop or delay
 #else
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
         driver->error = true;

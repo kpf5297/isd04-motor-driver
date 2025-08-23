@@ -13,20 +13,20 @@
 
 /* Set to 1 when building for a CMSIS-RTOS v2 environment. */
 #ifndef ISD04_USE_CMSIS
-#define ISD04_USE_CMSIS 0
+#define ISD04_USE_CMSIS 1
 #endif
 
 /* Set to 1 when using the STM32 HAL. */
 #ifndef ISD04_USE_HAL
-#define ISD04_USE_HAL 0
+#define ISD04_USE_HAL 1
 #endif
 
 #if ISD04_USE_CMSIS  /* CMSIS-RTOS v2 environment */
-#include "cmsis_os2.h"
+#include "cmsis_os.h"
 #define ISD04_DELAY_MS(ms)            osDelay(ms)
 typedef uint32_t Isd04DelayTick;
-#define ISD04_DELAY_START()           (osKernelSysTick())
-#define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(osKernelSysTick() - (start)) >= (ms))
+#define ISD04_DELAY_START()           (osKernelGetSysTimerCount())
+#define ISD04_DELAY_ELAPSED(start, ms) ((uint32_t)(osKernelGetSysTimerCount() - (start)) >= (ms))
 #elif ISD04_USE_HAL  /* Bare-metal STM32 HAL */
 #define ISD04_DELAY_MS(ms)            HAL_Delay(ms)
 typedef uint32_t Isd04DelayTick;
@@ -47,9 +47,9 @@ static inline void ISD04_DELAY_US(uint32_t us)
     if (ms > 0U) {
         osDelay(ms);
     }
-    uint32_t start = osKernelSysTick();
-    uint32_t ticks = (us % 1000U) * osKernelGetTickFreq() / 1000000U;
-    while ((osKernelSysTick() - start) < ticks) {
+    uint32_t start = osKernelGetSysTimerCount();
+    uint32_t ticks = (us % 1000U) * osKernelGetSysTimerFreq() / 1000000U;
+    while ((osKernelGetSysTimerCount() - start) < ticks) {
     }
 }
 #elif ISD04_USE_HAL
@@ -97,7 +97,7 @@ static inline void ISD04_DELAY_US(uint32_t us)
  * toggling the STEP GPIO directly.
  */
 #ifndef ISD04_STEP_CONTROL_TIMER
-#define ISD04_STEP_CONTROL_TIMER 0U
+#define ISD04_STEP_CONTROL_TIMER 1U
 #endif
 
 #ifndef ISD04_GPIO_PIN_COUNT

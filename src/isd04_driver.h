@@ -92,8 +92,10 @@ typedef struct {
  * this range will cause ::isd04_driver_init to set the driver's error flag.
  */
 typedef struct {
+#if !ISD04_STEP_CONTROL_TIMER
     GPIO_TypeDef *stp_port;
     uint16_t stp_pin;
+#endif
     GPIO_TypeDef *dir_port;
     uint16_t dir_pin;
     GPIO_TypeDef *ena_port;
