@@ -81,6 +81,15 @@ int main(void) {
 }
 ```
 
+## Thread Safety
+
+`isd04_driver_init` creates a mutex within the driver instance and all public
+APIs lock it when reading or modifying shared state. This ensures that calls to
+functions such as `isd04_driver_start`, `isd04_driver_set_speed`, and
+`isd04_driver_pulse` are safe to invoke from multiple threads. The singleton
+returned by `isd04_driver_get_instance` is likewise protected against concurrent
+initialisation.
+
 ## Timer Integration
 
 The driver can be stepped from a periodic timer interrupt. The example below
