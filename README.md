@@ -1,172 +1,68 @@
-# isd04-motor-driver
-Portable C driver for the ISD04 motor driver IC with STM32 HAL reference port, example projects, and Python-based telemetry visualization.
+# ISD04 Motor Driver
 
-## Versioning
-Call `isd04_driver_get_version()` to query the driver's semantic version string:
-
-```c
-#include "isd04_driver.h"
-
-const char *version = isd04_driver_get_version();
-```
+Portable C driver library for the ISD04 stepper motor driver IC with STM32 HAL integration.
 
 ## Hardware Setup
 
-Connect the microcontroller's STEP, DIR, and ENA signals to the ISD04 control
-inputs on connector P2 as described in the datasheet. P2 exposes each signal as
-a differential pair; tie the negative pins to ground and drive the positive
-pins from the MCU's GPIO outputs.
-
-All three logic inputs default high when left floating. Drive STEP high then
-low to advance a microstep, set DIR high for forward rotation and low for
-reverse, and pull ENA low to enable the outputs (high disables the driver).
-
-The disable polarity of the ENA pin is controlled by the `ISD04_ENA_ACTIVE_LEVEL`
-macro. By default it assumes an active-low disable (`GPIO_PIN_RESET`); define it
-as `GPIO_PIN_SET` if your hardware disables the driver with a high level.
+Connect your microcontroller GPIO pins to the ISD04 control inputs:
+- **STEP**: Pulse high-to-low to advance one microstep
+- **DIR**: High = forward, Low = reverse  
+- **ENA**: Low = enabled, High = disabled (configurable via `ISD04_ENA_ACTIVE_LEVEL`)
 
 ## Usage
 
 ```c
 #include "isd04_driver.h"
 
-static void on_event(Isd04Event event, void *context) {
-    Isd04Driver *driver = (Isd04Driver *)context;
+// Initialize driver
+Isd04Config config;
+isd04_driver_get_default_config(&config);
 
-    switch (event) {
-    case ISD04_EVENT_MICROSTEP_CHANGED:
-        /* react to microstep changes */
-        (void)isd04_driver_get_microstep(driver);
-        break;
-    case ISD04_EVENT_POSITION_CHANGED:
-        /* respond to position updates */
-        (void)isd04_driver_get_position(driver);
-        break;
-    default:
-        break;
-    }
-}
+Isd04Hardware hw = {
+    .stp_port = GPIOA, .stp_pin = GPIO_PIN_0,
+    .dir_port = GPIOA, .dir_pin = GPIO_PIN_1,
+    .ena_port = GPIOA, .ena_pin = GPIO_PIN_2,
+};
 
-int main(void) {
-    Isd04Config config;
-    isd04_driver_get_default_config(&config);
+Isd04Driver *driver = isd04_driver_get_instance();
+isd04_driver_init(driver, &config, &hw);
 
-    Isd04Hardware hw = {
-        .stp_port = GPIOA,
-        .stp_pin  = GPIO_PIN_0,
-        .dir_port = GPIOA,
-        .dir_pin  = GPIO_PIN_1,
-        .ena_port = GPIOA,
-        .ena_pin  = GPIO_PIN_2,
-    };
+// Control motor
+isd04_driver_enable(driver, true);
+isd04_driver_set_direction(driver, true);  // forward
+isd04_driver_start(driver);
+isd04_driver_set_speed(driver, 100);
 
-    Isd04Driver *driver = isd04_driver_get_instance();
-    isd04_driver_init(driver, &config, &hw);
-    /* pass driver as context so the callback can query state */
-    isd04_driver_register_callback(driver, on_event, driver);
-
-    isd04_driver_enable(driver, true);
-    isd04_driver_set_direction(driver, true);
-
-    isd04_driver_start(driver);
-    isd04_driver_set_speed(driver, 50);
-
-    /* periodically issue a step pulse */
-    isd04_driver_pulse(driver); /* call from a timer/interrupt */
-
-    /* ... */
-
-    isd04_driver_stop(driver);
-    return 0;
-}
+// Generate step pulses (call from timer interrupt)
+isd04_driver_pulse(driver);
 ```
 
-## Thread Safety
+## Key Features
 
-`isd04_driver_init` creates a mutex within the driver instance and all public
-APIs lock it when reading or modifying shared state. This ensures that calls to
-functions such as `isd04_driver_start`, `isd04_driver_set_speed`, and
-`isd04_driver_pulse` are safe to invoke from multiple threads. The singleton
-returned by `isd04_driver_get_instance` is likewise protected against concurrent
-initialisation.
+- **Thread-safe**: All public APIs are mutex-protected for multi-threaded applications
+- **Platform support**: STM32 HAL and CMSIS-RTOS v2 integration with fallback for testing  
+- **Timer integration**: Hardware timer support for precise step pulse generation
+- **Error handling**: Built-in GPIO validation and error reporting via event callbacks
+- **Configurable timing**: Adjustable step intervals and wake-up delays
 
-## Timer Integration
+## Configuration
 
-The driver can be stepped from a periodic timer interrupt. The example below
-configures a 1 kHz update timer using the STM32 HAL and emits a pulse from the
-callback:
+Key compile-time options:
+- `ISD04_ENA_ACTIVE_LEVEL`: Enable pin polarity (default: active-low)
+- `ISD04_STEP_MIN_INTERVAL_US`: Minimum step pulse interval (default: 4μs)
+- `ISD04_ENABLE_WAKE_DELAY_MS`: Driver wake-up delay (default: 1ms)
+- `ISD04_GPIO_PIN_COUNT`: GPIO pin validation range (default: 16)
 
-```c
-static TIM_HandleTypeDef htim2;
+## API Reference
 
-void isd04_timer_init(void)
-{
-    __HAL_RCC_TIM2_CLK_ENABLE();
-    htim2.Instance = TIM2;
-    htim2.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / 1000000U) - 1U; // 1 MHz base
-    htim2.Init.Period = 1000U - 1U; // 1 kHz
-    htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-    HAL_TIM_Base_Init(&htim2);
-    HAL_TIM_Base_Start_IT(&htim2);
-}
+**Core Functions:**
+- `isd04_driver_get_instance()` - Get singleton driver instance
+- `isd04_driver_init(driver, config, hw)` - Initialize with hardware configuration
+- `isd04_driver_enable(driver, enable)` - Enable/disable driver outputs
+- `isd04_driver_pulse(driver)` - Generate single step pulse
+- `isd04_driver_set_speed(driver, speed)` - Set target speed
+- `isd04_driver_get_version()` - Get library version string
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Instance == TIM2) {
-        isd04_driver_pulse(driver);
-        /* optionally send telemetry */
-        // isd04_driver_send_telemetry(driver);
-    }
-}
-```
+## License
 
-`isd04_driver_pulse` honours the `ISD04_STEP_MIN_INTERVAL_US` macro, ensuring
-successive pulses respect the datasheet's minimum step period. When enabling the
-driver, `ISD04_ENABLE_WAKE_DELAY_MS` inserts the mandated wake delay before the
-first pulse. These guards keep the system within the timing limits specified by
-the ISD04 datasheet.
-
-## Hardware validation and error handling
-
-The driver validates that the provided GPIO pins fall within the target MCU's
-pin count. Override `ISD04_GPIO_PIN_COUNT` at compile time if your platform
-exposes a different number of pins per port. Applications may use the
-`ISD04_VALIDATE_PIN(pin)` macro for their own static assertions.
-
-When built against the STM32 HAL the library assumes `HAL_GPIO_WritePin`
-succeeds for valid ports. The driver wraps this call to check port pointers and
-sets an internal error flag while emitting `ISD04_EVENT_ERROR` if a validation
-step fails or a write cannot be performed. Applications should supply valid
-hardware definitions and handle the error event to detect faults.
-
-`isd04_driver_pulse` toggles the step pin and updates the driver's internal
-position counter. If step pulses are produced elsewhere, call
-`isd04_driver_step` to keep the tracked position synchronized.
-
-## Timing helpers
-
-The driver exposes macros for integrating with platform-specific delay mechanisms:
-
-* `ISD04_DELAY_MS(ms)` – blocking delay for a number of milliseconds.
-* `ISD04_DELAY_US(us)` – blocking delay for a number of microseconds.
-* `ISD04_DELAY_START()` / `ISD04_DELAY_ELAPSED(start, ms)` – capture a tick
-  count and test whether a duration has passed without blocking. For example:
-
-```c
-Isd04DelayTick start = ISD04_DELAY_START();
-while (!ISD04_DELAY_ELAPSED(start, 10)) {
-    /* perform other tasks */
-}
-```
-
-These macros map to `HAL_Delay`/`HAL_GetTick` when `USE_HAL_DRIVER` is defined
-and to `osDelay`/`osKernelSysTick` when `CMSIS_OS_VERSION` is defined. When
-neither symbol is present they become no-ops so the driver can be built for host
-tests. Projects may also set `ISD04_STEP_PULSE_DELAY_MS` to enforce a minimum
-step pulse width using the delay helpers. Additional tuning is available via
-`ISD04_STEP_MIN_INTERVAL_US` to specify a low-level pulse width and
-`ISD04_ENABLE_WAKE_DELAY_MS` to insert a delay after enabling the driver.
-
-## Version history
-
-* **1.0.1** – Added pin range validation and `ISD04_VALIDATE_PIN` macro.
+MIT License - see LICENSE file for details.
