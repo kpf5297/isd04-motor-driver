@@ -38,6 +38,7 @@ static inline bool isd04_gpio_write_pin(GPIO_TypeDef *port, uint16_t pin, GPIO_P
 static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
 /** Clamp microstep mode to the allowable range. */
 static Isd04Microstep clamp_microstep(Isd04Microstep mode);
+/** Update position counter without locking. */
 static void step_unlocked(Isd04Driver *driver, int32_t steps);
 
 const char *isd04_driver_get_version(void)
