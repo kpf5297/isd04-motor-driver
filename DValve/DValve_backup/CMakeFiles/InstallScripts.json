@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/kevinfox/Code/DValve/DValve/cmake_install.cmake",
+		"/Users/kevinfox/Code/DValve/DValve/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
