@@ -257,6 +257,14 @@ void isd04_driver_stop(Isd04Driver *driver);
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
 
 /**
+ * Obtain the current motor speed in steps per second.
+ *
+ * @param driver Driver instance.
+ * @return Current speed value; 0 if @p driver is NULL.
+ */
+int32_t isd04_driver_get_speed(Isd04Driver *driver);
+
+/**
  * Configure the microstepping resolution.
  *
  * Applies the DIP switch pattern corresponding to @p mode and emits

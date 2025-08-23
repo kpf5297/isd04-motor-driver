@@ -70,17 +70,29 @@ void StepperTask(void *argument);
 void StepperTask(void *argument)
 {
   Isd04Driver *motor_driver = isd04_driver_get_instance();
-  
+
   /* Infinite loop */
   for(;;)
   {
     if (motor_driver != NULL) {
-      // Generate a step pulse - the driver will handle timing and direction
-      isd04_driver_pulse(motor_driver);
+      int32_t speed = isd04_driver_get_speed(motor_driver);
+      if (speed != 0) {
+        uint32_t abs_speed = (speed > 0) ? (uint32_t)speed : (uint32_t)(-speed);
+        uint32_t period_ms = 1000U / abs_speed;
+        uint32_t min_period_ms = (ISD04_STEP_MIN_INTERVAL_US + 999U) / 1000U;
+        if (period_ms < min_period_ms) {
+          period_ms = min_period_ms;
+        }
+        if (period_ms == 0U) {
+          period_ms = 1U;
+        }
+        isd04_driver_pulse(motor_driver);
+        osDelay(period_ms);
+        continue;
+      }
     }
-    
-    // Wait for next step - 20ms = 50 steps/sec (1000ms / 50 steps)
-    osDelay(20);
+
+    osDelay(1);
   }
 }
 
