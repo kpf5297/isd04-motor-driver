@@ -324,7 +324,10 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->current_speed = 0;
     driver->current_position = 0;
     driver->running = false;
-    driver->enabled = true;
+    GPIO_PinState ena_level = (ISD04_ENA_ACTIVE_LEVEL == GPIO_PIN_SET)
+        ? GPIO_PIN_RESET
+        : GPIO_PIN_SET;
+    driver->enabled = (ena_level != ISD04_ENA_ACTIVE_LEVEL);
     driver->last_step_tick = 0U;
 #if ISD04_STEP_CONTROL_TIMER
     driver->step_timer = NULL;
@@ -334,7 +337,7 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->callback_context = NULL;
     driver->microstep = config->microstep;
     ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(driver->microstep));
-    if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin, GPIO_PIN_SET) ||
+    if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin, ena_level) ||
         !isd04_gpio_write_pin(driver->hw.dir_port, driver->hw.dir_pin, GPIO_PIN_RESET)) {
         driver->error = true;
         return;
