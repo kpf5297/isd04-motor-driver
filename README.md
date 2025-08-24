@@ -38,14 +38,10 @@ for (int i = 0; i < 200; ++i) {
 }
 ```
 
-`pwm_frequency_hz` defines the baseline step rate used when running
-continuously with `isd04_driver_set_speed()` and `isd04_driver_start()`.
-`max_speed` is the largest speed value the driver accepts. The actual step
-frequency is scaled linearly:
-
-```
-step_hz = pwm_frequency_hz * |speed| / max_speed
-```
+`max_speed` is the largest step rate the driver accepts (in steps per second).
+`isd04_driver_set_speed()` specifies a signed target rate within
+`[-max_speed, max_speed]`, and the driver generates steps at this rate while
+running.
 
 ## Key Features
 

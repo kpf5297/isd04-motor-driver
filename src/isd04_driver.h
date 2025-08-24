@@ -68,9 +68,7 @@ typedef enum {
  * Static configuration for the ISD04 driver.
  */
 typedef struct {
-    /** PWM frequency in Hz. */
-    uint32_t pwm_frequency_hz;
-    /** Maximum speed value permitted. */
+    /** Maximum step rate in steps per second. */
     int32_t max_speed;
     /** Default microstepping resolution. */
     Isd04Microstep microstep;
