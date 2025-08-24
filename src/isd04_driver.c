@@ -40,8 +40,10 @@ static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
 static Isd04Microstep clamp_microstep(Isd04Microstep mode);
 /** Update position counter without locking. */
 static void step_unlocked(Isd04Driver *driver, int32_t steps);
+#if !ISD04_STEP_CONTROL_TIMER
 /** RTOS task driving step pulses while motor runs. */
 static void isd04_step_task(void *argument);
+#endif
 
 const char *isd04_driver_get_version(void)
 {
@@ -232,6 +234,7 @@ static void running_set_speed(Isd04Driver *driver, int32_t speed)
     }
 }
 
+#if !ISD04_STEP_CONTROL_TIMER
 static void isd04_step_task(void *argument)
 {
     Isd04Driver *driver = (Isd04Driver *)argument;
@@ -257,6 +260,7 @@ static void isd04_step_task(void *argument)
         }
     }
 }
+#endif
 
 Isd04Driver *isd04_driver_get_instance(void)
 {
@@ -366,9 +370,11 @@ void isd04_driver_start(Isd04Driver *driver)
         driver->state->start(driver);
     }
     isd04_unlock(driver);
+#if !ISD04_STEP_CONTROL_TIMER
     if (!driver->step_thread) {
         driver->step_thread = osThreadNew(isd04_step_task, driver, NULL);
     }
+#endif
 }
 
 void isd04_driver_stop(Isd04Driver *driver)
@@ -385,10 +391,12 @@ void isd04_driver_stop(Isd04Driver *driver)
         driver->state->stop(driver);
     }
     isd04_unlock(driver);
+#if !ISD04_STEP_CONTROL_TIMER
     if (driver->step_thread) {
         osThreadTerminate(driver->step_thread);
         driver->step_thread = NULL;
     }
+#endif
     isd04_lock(driver);
     driver->running = false;
     driver->current_speed = 0;
