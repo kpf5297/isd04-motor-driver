@@ -164,9 +164,7 @@ static void isd04_step_task(void *argument)
     while (driver) {
         if (driver->running && driver->current_speed != 0) {
             int32_t direction = driver->current_speed > 0 ? 1 : -1;
-            uint32_t step_hz =
-                driver->config.pwm_frequency_hz * (uint32_t)abs(driver->current_speed) /
-                (uint32_t)driver->config.max_speed;
+            uint32_t step_hz = (uint32_t)abs(driver->current_speed);
             if (step_hz == 0U) {
                 osDelay(1U);
                 continue;
@@ -204,8 +202,6 @@ void isd04_driver_get_default_config(Isd04Config *config)
     if (!config) {
         return;
     }
-
-    config->pwm_frequency_hz = 20000U;
     config->max_speed = 1000;
     config->microstep = ISD04_MICROSTEP_3200;
     config->phase_current_ma = 2800U;
