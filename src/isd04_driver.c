@@ -149,6 +149,37 @@ static void running_set_speed(Isd04Driver *driver, int32_t speed)
 {
     int32_t new_speed = clamp_speed(driver, speed);
     if (new_speed != driver->current_speed) {
+#if ISD04_STEP_CONTROL_TIMER
+        if (!driver->step_timer) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+            return;
+        }
+
+        HAL_StatusTypeDef rc = HAL_OK;
+        if (new_speed == 0) {
+            rc = HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1);
+        } else {
+            uint32_t step_hz =
+                driver->config.pwm_frequency_hz * (uint32_t)abs(new_speed) /
+                (uint32_t)driver->config.max_speed;
+            uint32_t period = driver->config.pwm_frequency_hz / step_hz;
+            uint32_t desired_pulse = period / 2U;
+            __HAL_TIM_SET_AUTORELOAD(driver->step_timer, period);
+            __HAL_TIM_SET_COMPARE(driver->step_timer, TIM_CHANNEL_1, desired_pulse);
+            rc = HAL_TIM_PWM_Start(driver->step_timer, TIM_CHANNEL_1);
+        }
+
+        if (rc != HAL_OK) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+            return;
+        }
+#endif
         driver->current_speed = new_speed;
         if (driver->callback) {
             driver->callback(ISD04_EVENT_SPEED_CHANGED, driver->callback_context);
