@@ -10,32 +10,51 @@ Connect your microcontroller GPIO pins to the ISD04 control inputs:
 - **ENA**: Low = enabled, High = disabled (configurable via `ISD04_ENA_ACTIVE_LEVEL`)
 
 ## Usage
+The driver can generate STEP pulses with a hardware timer. Bind the timer,
+start the motor, and the timer will emit continuous PWM-based pulses:
 
 ```c
 #include "isd04_driver.h"
 
-// Initialize driver
+// Timer configured to output PWM on the STEP pin
+extern TIM_HandleTypeDef htim2;
+
+// Initialize driver configuration
 Isd04Config config;
-isd04_driver_get_default_config(&config);
+isd04_driver_get_default_config(&config); // pwm_frequency_hz and max_speed
 
 Isd04Hardware hw = {
-    .stp_port = GPIOA, .stp_pin = GPIO_PIN_0,
     .dir_port = GPIOA, .dir_pin = GPIO_PIN_1,
     .ena_port = GPIOA, .ena_pin = GPIO_PIN_2,
 };
 
 Isd04Driver *driver = isd04_driver_get_instance();
 isd04_driver_init(driver, &config, &hw);
+isd04_driver_bind_step_timer(driver, &htim2);
 
-// Control motor
+// Start continuous stepping
 isd04_driver_enable(driver, true);
-isd04_driver_set_direction(driver, true);  // forward
+isd04_driver_set_direction(driver, true); // forward
+isd04_driver_set_speed(driver, 500); // 50% of max_speed -> ~10 kHz with defaults
 isd04_driver_start(driver);
-isd04_driver_set_speed(driver, 100);
 
-// Generate step pulses (call from timer interrupt)
-isd04_driver_pulse(driver);
+// ... motor runs under timer control ...
+
+// Stop and release the timer when finished
+isd04_driver_stop(driver);
+isd04_driver_unbind_step_timer(driver);
 ```
+
+`pwm_frequency_hz` defines the timer's base PWM rate and therefore the
+maximum achievable step frequency. `max_speed` is the largest speed value the
+driver accepts. The actual step frequency is scaled linearly as
+
+```
+step_hz = pwm_frequency_hz * |speed| / max_speed
+```
+
+The driver configures a 50% duty cycle so each STEP pulse is high for half of
+the computed period.
 
 ## Key Features
 
