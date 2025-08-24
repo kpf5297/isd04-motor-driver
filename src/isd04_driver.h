@@ -35,19 +35,6 @@ static inline void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pin, GPIO_PinS
 }
 #endif
 
-#if ISD04_STEP_CONTROL_TIMER
-#if ISD04_USE_HAL
-#include "stm32f4xx_hal_tim.h"
-#else
-typedef struct {
-    void *dummy;
-} TIM_HandleTypeDef;
-typedef enum { HAL_OK = 0U, HAL_ERROR = 1U } HAL_StatusTypeDef;
-static inline HAL_StatusTypeDef HAL_TIM_Base_Start(TIM_HandleTypeDef *htim) { (void)htim; return HAL_OK; }
-static inline HAL_StatusTypeDef HAL_TIM_Base_Stop(TIM_HandleTypeDef *htim) { (void)htim; return HAL_OK; }
-#endif
-typedef TIM_HandleTypeDef Isd04Timer;
-#endif
 
 #define ISD04_DRIVER_VERSION_MAJOR 1
 #define ISD04_DRIVER_VERSION_MINOR 0
@@ -98,10 +85,8 @@ typedef struct {
  * this range will cause ::isd04_driver_init to set the driver's error flag.
  */
 typedef struct {
-#if !ISD04_STEP_CONTROL_TIMER
     GPIO_TypeDef *stp_port;
     uint16_t stp_pin;
-#endif
     GPIO_TypeDef *dir_port;
     uint16_t dir_pin;
     GPIO_TypeDef *ena_port;
@@ -187,10 +172,6 @@ typedef struct {
     bool enabled;
     /** Tick recorded when the last step pulse was issued. */
     Isd04DelayTick last_step_tick;
-#if ISD04_STEP_CONTROL_TIMER
-    /** Timer used to generate STEP pulses when enabled. */
-    Isd04Timer *step_timer;
-#endif
     /** Thread handle for RTOS-based stepping. */
     osThreadId_t step_thread;
     /** Registered event callback. */
@@ -315,26 +296,6 @@ void isd04_driver_set_direction(Isd04Driver *driver, bool forward);
  */
 void isd04_driver_enable(Isd04Driver *driver, bool enable);
 
-#if ISD04_STEP_CONTROL_TIMER
-/**
- * Bind a hardware timer used to generate step pulses.
- *
- * When a timer is bound the driver triggers the timer rather than toggling
- * the STEP GPIO directly.
- *
- * @param driver Driver instance.
- * @param timer  Hardware timer handle configured for one-pulse mode.
- */
-void isd04_driver_bind_step_timer(Isd04Driver *driver, Isd04Timer *timer);
-
-/**
- * Remove any previously bound step timer.
- *
- * @param driver Driver instance.
- */
-void isd04_driver_unbind_step_timer(Isd04Driver *driver);
-#endif
-
 /**
  * Generate a single step pulse on the STEP pin.
  *
@@ -401,7 +362,7 @@ void isd04_driver_set_position(Isd04Driver *driver, int32_t position);
 /**
  * Advance the driver's internal position counter.
  *
- * Call this periodically (e.g. from a timer interrupt) with the number of
+ * Call this periodically with the number of
  * steps that have been issued to the motor since the last call to keep the
  * position in sync with actual movement. Emits ::ISD04_EVENT_POSITION_CHANGED
  * on every invocation.

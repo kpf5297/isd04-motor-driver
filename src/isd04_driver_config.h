@@ -89,17 +89,6 @@ static inline void ISD04_DELAY_US(uint32_t us)
 #define ISD04_STEP_PULSE_DELAY_MS 0U
 #endif
 
-/*
- * Enable hardware-timer based STEP pulse generation.
- *
- * When set to a non-zero value the driver expects a timer to be bound via
- * isd04_driver_bind_step_timer() and will trigger that timer instead of
- * toggling the STEP GPIO directly.
- */
-#ifndef ISD04_STEP_CONTROL_TIMER
-#define ISD04_STEP_CONTROL_TIMER 1U
-#endif
-
 #ifndef ISD04_GPIO_PIN_COUNT
 #define ISD04_GPIO_PIN_COUNT 16U
 #endif

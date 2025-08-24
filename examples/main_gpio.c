@@ -7,7 +7,6 @@
  *   - ENA  -> PA2 (GPIO output, active low)
  *
  * Build notes:
- *   - Set ISD04_STEP_CONTROL_TIMER to 0 in isd04_driver_config.h.
  *   - Configure the listed GPIO pins as push-pull outputs.
  */
 
