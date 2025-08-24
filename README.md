@@ -43,6 +43,54 @@ for (int i = 0; i < 200; ++i) {
 `[-max_speed, max_speed]`, and the driver generates steps at this rate while
 running.
 
+### CMSIS-RTOS task
+
+When `ISD04_USE_CMSIS` is enabled the driver can generate step pulses from a
+background thread. Call `isd04_driver_start()` once the RTOS is running to
+launch the internal task and use `isd04_driver_set_speed()` to update the step
+rate while the motor is running. `isd04_driver_stop()` halts the task.
+
+```c
+#include "cmsis_os2.h"
+#include "isd04_driver.h"
+
+static void motor_task(void *argument) {
+    Isd04Driver *driver = argument;
+
+    isd04_driver_start(driver);            // start internal step thread
+    isd04_driver_set_speed(driver, 100);   // run forward
+    osDelay(1000);
+
+    isd04_driver_set_speed(driver, -100);  // reverse direction
+    osDelay(1000);
+
+    isd04_driver_stop(driver);             // stop motor
+}
+
+int main(void) {
+    HAL_Init();
+    // GPIO configuration omitted
+
+    Isd04Config config;
+    isd04_driver_get_default_config(&config);
+
+    Isd04Hardware hw = {
+        .stp_port = GPIOA, .stp_pin = GPIO_PIN_0,
+        .dir_port = GPIOA, .dir_pin = GPIO_PIN_1,
+        .ena_port = GPIOA, .ena_pin = GPIO_PIN_2,
+    };
+
+    Isd04Driver *driver = isd04_driver_get_instance();
+    isd04_driver_init(driver, &config, &hw);
+
+    osKernelInitialize();
+    osThreadNew(motor_task, driver, NULL);
+    osKernelStart();
+
+    for (;;) { /* Application code */ }
+}
+```
+
 ## Key Features
 
 - **Thread-safe**: All public APIs are mutex-protected for multi-threaded applications
@@ -69,6 +117,7 @@ Key options include:
 A reference application is provided in the `examples` directory:
 
 - `examples/main_gpio.c` demonstrates manual STEP pulses via GPIO.
+- `examples/main_cmsis.c` runs the driver from a CMSIS-RTOS thread and updates speed and direction.
 
 ## API Reference
 
