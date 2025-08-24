@@ -502,7 +502,8 @@ void StartDefaultTask(void *argument)
     if (motor_driver != NULL) {
       // Open valve sequence (move forward) - LED ON solid
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-      isd04_driver_start(motor_driver);
+      // Ensure automatic stepping is disabled before manual pulses
+      isd04_driver_stop(motor_driver);
       isd04_driver_set_direction(motor_driver, true);  // Forward = open
       
       // Generate steps to fully open valve - LED blinks with each step
@@ -516,12 +517,12 @@ void StartDefaultTask(void *argument)
       }
       
       // Stop and wait - LED OFF
-      isd04_driver_stop(motor_driver);
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       osDelay(2000); // Shorter wait at full open
-      
+
       // Close valve sequence (move reverse) - LED fast blink pattern
-      isd04_driver_start(motor_driver);
+      // Ensure automatic stepping is disabled before manual pulses
+      isd04_driver_stop(motor_driver);
       isd04_driver_set_direction(motor_driver, false); // Reverse = close
       
       // Generate steps to fully close valve - LED double blinks with each step
@@ -540,7 +541,6 @@ void StartDefaultTask(void *argument)
       }
       
       // Stop and wait - LED OFF
-      isd04_driver_stop(motor_driver);
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       osDelay(2000); // Shorter wait at full close
       
