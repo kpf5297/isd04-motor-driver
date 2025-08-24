@@ -14,6 +14,12 @@ typedef void *osMutexId_t;
 static inline osMutexId_t osMutexNew(const void *attr) { (void)attr; return NULL; }
 static inline void osMutexAcquire(osMutexId_t id, uint32_t timeout) { (void)id; (void)timeout; }
 static inline void osMutexRelease(osMutexId_t id) { (void)id; }
+typedef void *osThreadId_t;
+static inline osThreadId_t osThreadNew(void (*func)(void *), void *arg, const void *attr)
+{ (void)func; (void)arg; (void)attr; return NULL; }
+static inline int osThreadTerminate(osThreadId_t id) { (void)id; return 0; }
+static inline uint32_t osKernelGetTickFreq(void) { return 1000U; }
+static inline void osDelay(uint32_t ms) { (void)ms; }
 #ifndef osWaitForever
 #define osWaitForever 0xFFFFFFFFU
 #endif
@@ -185,6 +191,8 @@ typedef struct {
     /** Timer used to generate STEP pulses when enabled. */
     Isd04Timer *step_timer;
 #endif
+    /** Thread handle for RTOS-based stepping. */
+    osThreadId_t step_thread;
     /** Registered event callback. */
     Isd04EventCallback callback;
     /** User supplied context passed to the callback. */
@@ -226,6 +234,7 @@ void isd04_driver_get_default_config(Isd04Config *config);
  * @param[in]  hw     Hardware pin definitions.
  */
 void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd04Hardware *hw);
+void isd04_driver_rtos_init(Isd04Driver *driver);
 
 /**
  * Transition the driver to the running state.
