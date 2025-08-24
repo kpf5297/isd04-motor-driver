@@ -100,6 +100,16 @@ static void stopped_enter(Isd04Driver *driver)
 {
     driver->running = false;
     driver->current_speed = 0;
+#if ISD04_STEP_CONTROL_TIMER
+    if (driver->step_timer) {
+        if (HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+        }
+    }
+#endif
 }
 
 static void stopped_start(Isd04Driver *driver)
@@ -134,11 +144,44 @@ static void running_enter(Isd04Driver *driver)
 
 static void running_start(Isd04Driver *driver)
 {
-    (void)driver; /* Already in running state */
+#if ISD04_STEP_CONTROL_TIMER
+    if (driver->current_speed != 0) {
+        if (driver->step_timer) {
+            if (HAL_TIM_PWM_Start(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
+                driver->error = true;
+                if (driver->callback) {
+                    driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+                }
+            }
+        } else {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+        }
+    }
+#else
+    (void)driver;
+#endif
 }
 
 static void running_stop(Isd04Driver *driver)
 {
+#if ISD04_STEP_CONTROL_TIMER
+    if (driver->step_timer) {
+        if (HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
+            driver->error = true;
+            if (driver->callback) {
+                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+            }
+        }
+    } else {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+    }
+#endif
     change_state(driver, &stopped_state);
     if (driver->callback) {
         driver->callback(ISD04_EVENT_STOPPED, driver->callback_context);
@@ -276,7 +319,11 @@ void isd04_driver_start(Isd04Driver *driver)
         return;
     }
     isd04_lock(driver);
-    if (driver->state) {
+    const Isd04State *prev = driver->state;
+    if (prev && prev->start) {
+        prev->start(driver);
+    }
+    if (driver->state != prev && driver->state && driver->state->start) {
         driver->state->start(driver);
     }
     isd04_unlock(driver);
@@ -288,7 +335,11 @@ void isd04_driver_stop(Isd04Driver *driver)
         return;
     }
     isd04_lock(driver);
-    if (driver->state) {
+    const Isd04State *prev = driver->state;
+    if (prev && prev->stop) {
+        prev->stop(driver);
+    }
+    if (driver->state != prev && driver->state && driver->state->stop) {
         driver->state->stop(driver);
     }
     isd04_unlock(driver);
