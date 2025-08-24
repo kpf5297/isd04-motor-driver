@@ -52,8 +52,6 @@ const char *isd04_driver_get_version(void)
 typedef struct Isd04State {
     Isd04StateId id;
     void (*enter)(Isd04Driver *driver);
-    void (*start)(Isd04Driver *driver);
-    void (*stop)(Isd04Driver *driver);
     void (*set_speed)(Isd04Driver *driver, int32_t speed);
 } Isd04State;
 
@@ -61,28 +59,20 @@ static void change_state(Isd04Driver *driver, const Isd04State *state);
 
 /* Forward declarations for concrete state behaviours. */
 static void stopped_enter(Isd04Driver *driver);
-static void stopped_start(Isd04Driver *driver);
-static void stopped_stop(Isd04Driver *driver);
 static void stopped_set_speed(Isd04Driver *driver, int32_t speed);
 
 static void running_enter(Isd04Driver *driver);
-static void running_start(Isd04Driver *driver);
-static void running_stop(Isd04Driver *driver);
 static void running_set_speed(Isd04Driver *driver, int32_t speed);
 
 static const Isd04State stopped_state = {
     .id = ISD04_STATE_STOPPED,
     .enter = stopped_enter,
-    .start = stopped_start,
-    .stop = stopped_stop,
     .set_speed = stopped_set_speed,
 };
 
 static const Isd04State running_state = {
     .id = ISD04_STATE_RUNNING,
     .enter = running_enter,
-    .start = running_start,
-    .stop = running_stop,
     .set_speed = running_set_speed,
 };
 
@@ -95,6 +85,12 @@ static void change_state(Isd04Driver *driver, const Isd04State *state)
     if (driver->state->enter) {
         driver->state->enter(driver);
     }
+    if (driver->callback) {
+        Isd04Event evt = (state->id == ISD04_STATE_RUNNING)
+            ? ISD04_EVENT_STARTED
+            : ISD04_EVENT_STOPPED;
+        driver->callback(evt, driver->callback_context);
+    }
 }
 
 /* --- Stopped state behaviour --- */
@@ -102,19 +98,6 @@ static void stopped_enter(Isd04Driver *driver)
 {
     driver->running = false;
     driver->current_speed = 0;
-}
-
-static void stopped_start(Isd04Driver *driver)
-{
-    change_state(driver, &running_state);
-    if (driver->callback) {
-        driver->callback(ISD04_EVENT_STARTED, driver->callback_context);
-    }
-}
-
-static void stopped_stop(Isd04Driver *driver)
-{
-    (void)driver; /* Already in stopped state */
 }
 
 static void stopped_set_speed(Isd04Driver *driver, int32_t speed)
@@ -134,19 +117,6 @@ static void running_enter(Isd04Driver *driver)
     driver->running = true;
 }
 
-static void running_start(Isd04Driver *driver)
-{
-    (void)driver;
-}
-
-static void running_stop(Isd04Driver *driver)
-{
-    change_state(driver, &stopped_state);
-    if (driver->callback) {
-        driver->callback(ISD04_EVENT_STOPPED, driver->callback_context);
-    }
-}
-
 static void running_set_speed(Isd04Driver *driver, int32_t speed)
 {
     int32_t new_speed = clamp_speed(driver, speed);
@@ -164,7 +134,7 @@ static void isd04_step_task(void *argument)
     while (driver) {
         if (driver->running && driver->current_speed != 0) {
             int32_t direction = driver->current_speed > 0 ? 1 : -1;
-                                         (int32_t)driver->config.microstep / 60);
+            uint32_t step_hz = (uint32_t)((abs(driver->current_speed) * driver->config.microstep) / 60);
             if (step_hz == 0U) {
                 osDelay(1U);
                 continue;
@@ -265,13 +235,7 @@ void isd04_driver_start(Isd04Driver *driver)
         return;
     }
     isd04_lock(driver);
-    const Isd04State *prev = driver->state;
-    if (prev && prev->start) {
-        prev->start(driver);
-    }
-    if (driver->state != prev && driver->state && driver->state->start) {
-        driver->state->start(driver);
-    }
+    change_state(driver, &running_state);
     isd04_unlock(driver);
     if (!driver->step_thread) {
         driver->step_thread = osThreadNew(isd04_step_task, driver, NULL);
@@ -284,22 +248,12 @@ void isd04_driver_stop(Isd04Driver *driver)
         return;
     }
     isd04_lock(driver);
-    const Isd04State *prev = driver->state;
-    if (prev && prev->stop) {
-        prev->stop(driver);
-    }
-    if (driver->state != prev && driver->state && driver->state->stop) {
-        driver->state->stop(driver);
-    }
+    change_state(driver, &stopped_state);
     isd04_unlock(driver);
     if (driver->step_thread) {
         osThreadTerminate(driver->step_thread);
         driver->step_thread = NULL;
     }
-    isd04_lock(driver);
-    driver->running = false;
-    driver->current_speed = 0;
-    isd04_unlock(driver);
 }
 
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed)
