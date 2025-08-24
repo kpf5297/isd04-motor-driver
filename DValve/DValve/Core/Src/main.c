@@ -148,9 +148,6 @@ int main(void)
 
     // Set speed to 50 steps/sec
     isd04_driver_set_speed(motor_driver, 50);
-    
-    // Start the motor driver - this will begin automatic stepping
-    isd04_driver_start(motor_driver);
   }
     
   //   // Now test timer PWM pulse generation - create discrete pulses
