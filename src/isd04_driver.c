@@ -202,8 +202,8 @@ void isd04_driver_get_default_config(Isd04Config *config)
     if (!config) {
         return;
     }
-    config->max_speed = 1000;
-    config->microstep = ISD04_MICROSTEP_3200;
+    config->max_speed = 100;
+    config->microstep = ISD04_MICROSTEP_200;
     config->phase_current_ma = 2800U;
 }
 

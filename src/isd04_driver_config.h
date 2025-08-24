@@ -13,12 +13,12 @@
 
 /* Set to 1 when building for a CMSIS-RTOS v2 environment. */
 #ifndef ISD04_USE_CMSIS
-#define ISD04_USE_CMSIS 0
+#define ISD04_USE_CMSIS 1
 #endif
 
 /* Set to 1 when using the STM32 HAL. */
 #ifndef ISD04_USE_HAL
-#define ISD04_USE_HAL 0
+#define ISD04_USE_HAL 1
 #endif
 
 #if ISD04_USE_CMSIS  /* CMSIS-RTOS v2 environment */
