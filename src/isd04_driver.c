@@ -40,6 +40,8 @@ static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
 static Isd04Microstep clamp_microstep(Isd04Microstep mode);
 /** Update position counter without locking. */
 static void step_unlocked(Isd04Driver *driver, int32_t steps);
+/** RTOS task driving step pulses while motor runs. */
+static void isd04_step_task(void *argument);
 
 const char *isd04_driver_get_version(void)
 {
@@ -230,6 +232,32 @@ static void running_set_speed(Isd04Driver *driver, int32_t speed)
     }
 }
 
+static void isd04_step_task(void *argument)
+{
+    Isd04Driver *driver = (Isd04Driver *)argument;
+    while (driver) {
+        if (driver->running && driver->current_speed != 0) {
+            int32_t direction = driver->current_speed > 0 ? 1 : -1;
+            uint32_t step_hz =
+                driver->config.pwm_frequency_hz * (uint32_t)abs(driver->current_speed) /
+                (uint32_t)driver->config.max_speed;
+            if (step_hz == 0U) {
+                osDelay(1U);
+                continue;
+            }
+            uint32_t delay_ticks = osKernelGetTickFreq() / step_hz;
+            if (delay_ticks == 0U) {
+                delay_ticks = 1U;
+            }
+            isd04_driver_pulse(driver);
+            isd04_driver_step(driver, direction);
+            osDelay(delay_ticks);
+        } else {
+            osDelay(1U);
+        }
+    }
+}
+
 Isd04Driver *isd04_driver_get_instance(void)
 {
     if (!instance_mutex) {
@@ -301,6 +329,7 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
 #if ISD04_STEP_CONTROL_TIMER
     driver->step_timer = NULL;
 #endif
+    driver->step_thread = NULL;
     driver->callback = NULL;
     driver->callback_context = NULL;
     driver->microstep = config->microstep;
@@ -311,6 +340,13 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
         return;
     }
     change_state(driver, &stopped_state);
+}
+
+void isd04_driver_rtos_init(Isd04Driver *driver)
+{
+    if (driver) {
+        driver->step_thread = NULL;
+    }
 }
 
 void isd04_driver_start(Isd04Driver *driver)
@@ -327,6 +363,9 @@ void isd04_driver_start(Isd04Driver *driver)
         driver->state->start(driver);
     }
     isd04_unlock(driver);
+    if (!driver->step_thread) {
+        driver->step_thread = osThreadNew(isd04_step_task, driver, NULL);
+    }
 }
 
 void isd04_driver_stop(Isd04Driver *driver)
@@ -342,6 +381,14 @@ void isd04_driver_stop(Isd04Driver *driver)
     if (driver->state != prev && driver->state && driver->state->stop) {
         driver->state->stop(driver);
     }
+    isd04_unlock(driver);
+    if (driver->step_thread) {
+        osThreadTerminate(driver->step_thread);
+        driver->step_thread = NULL;
+    }
+    isd04_lock(driver);
+    driver->running = false;
+    driver->current_speed = 0;
     isd04_unlock(driver);
 }
 
@@ -510,7 +557,6 @@ void isd04_driver_pulse(Isd04Driver *driver)
     }
 #endif
     driver->last_step_tick = ISD04_DELAY_START();
-    step_unlocked(driver, 1);
     isd04_unlock(driver);
 }
 
