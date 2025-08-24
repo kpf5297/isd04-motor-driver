@@ -40,10 +40,8 @@ static int32_t clamp_speed(const Isd04Driver *driver, int32_t speed);
 static Isd04Microstep clamp_microstep(Isd04Microstep mode);
 /** Update position counter without locking. */
 static void step_unlocked(Isd04Driver *driver, int32_t steps);
-#if !ISD04_STEP_CONTROL_TIMER
 /** RTOS task driving step pulses while motor runs. */
 static void isd04_step_task(void *argument);
-#endif
 
 const char *isd04_driver_get_version(void)
 {
@@ -104,16 +102,6 @@ static void stopped_enter(Isd04Driver *driver)
 {
     driver->running = false;
     driver->current_speed = 0;
-#if ISD04_STEP_CONTROL_TIMER
-    if (driver->step_timer) {
-        if (HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
-            driver->error = true;
-            if (driver->callback) {
-                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-            }
-        }
-    }
-#endif
 }
 
 static void stopped_start(Isd04Driver *driver)
@@ -148,44 +136,11 @@ static void running_enter(Isd04Driver *driver)
 
 static void running_start(Isd04Driver *driver)
 {
-#if ISD04_STEP_CONTROL_TIMER
-    if (driver->current_speed != 0) {
-        if (driver->step_timer) {
-            if (HAL_TIM_PWM_Start(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
-                driver->error = true;
-                if (driver->callback) {
-                    driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-                }
-            }
-        } else {
-            driver->error = true;
-            if (driver->callback) {
-                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-            }
-        }
-    }
-#else
     (void)driver;
-#endif
 }
 
 static void running_stop(Isd04Driver *driver)
 {
-#if ISD04_STEP_CONTROL_TIMER
-    if (driver->step_timer) {
-        if (HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
-            driver->error = true;
-            if (driver->callback) {
-                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-            }
-        }
-    } else {
-        driver->error = true;
-        if (driver->callback) {
-            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-        }
-    }
-#endif
     change_state(driver, &stopped_state);
     if (driver->callback) {
         driver->callback(ISD04_EVENT_STOPPED, driver->callback_context);
@@ -196,37 +151,6 @@ static void running_set_speed(Isd04Driver *driver, int32_t speed)
 {
     int32_t new_speed = clamp_speed(driver, speed);
     if (new_speed != driver->current_speed) {
-#if ISD04_STEP_CONTROL_TIMER
-        if (!driver->step_timer) {
-            driver->error = true;
-            if (driver->callback) {
-                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-            }
-            return;
-        }
-
-        HAL_StatusTypeDef rc = HAL_OK;
-        if (new_speed == 0) {
-            rc = HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1);
-        } else {
-            uint32_t step_hz =
-                driver->config.pwm_frequency_hz * (uint32_t)abs(new_speed) /
-                (uint32_t)driver->config.max_speed;
-            uint32_t period = driver->config.pwm_frequency_hz / step_hz;
-            uint32_t desired_pulse = period / 2U;
-            __HAL_TIM_SET_AUTORELOAD(driver->step_timer, period);
-            __HAL_TIM_SET_COMPARE(driver->step_timer, TIM_CHANNEL_1, desired_pulse);
-            rc = HAL_TIM_PWM_Start(driver->step_timer, TIM_CHANNEL_1);
-        }
-
-        if (rc != HAL_OK) {
-            driver->error = true;
-            if (driver->callback) {
-                driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-            }
-            return;
-        }
-#endif
         driver->current_speed = new_speed;
         if (driver->callback) {
             driver->callback(ISD04_EVENT_SPEED_CHANGED, driver->callback_context);
@@ -234,7 +158,6 @@ static void running_set_speed(Isd04Driver *driver, int32_t speed)
     }
 }
 
-#if !ISD04_STEP_CONTROL_TIMER
 static void isd04_step_task(void *argument)
 {
     Isd04Driver *driver = (Isd04Driver *)argument;
@@ -260,7 +183,6 @@ static void isd04_step_task(void *argument)
         }
     }
 }
-#endif
 
 Isd04Driver *isd04_driver_get_instance(void)
 {
@@ -298,18 +220,6 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->mutex = osMutexNew(NULL);
     driver->error = false;
 
-#if ISD04_STEP_CONTROL_TIMER
-    if (!hw->dir_port || !hw->ena_port) {
-        driver->error = true;
-        return;
-    }
-
-    if (!ISD04_VALIDATE_PIN(hw->dir_pin) ||
-        !ISD04_VALIDATE_PIN(hw->ena_pin)) {
-        driver->error = true;
-        return;
-    }
-#else
     if (!hw->stp_port || !hw->dir_port || !hw->ena_port) {
         driver->error = true;
         return;
@@ -321,7 +231,6 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
         driver->error = true;
         return;
     }
-#endif
 
     driver->config = *config;
     driver->hw = *hw;
@@ -333,9 +242,6 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
         : GPIO_PIN_SET;
     driver->enabled = (ena_level != ISD04_ENA_ACTIVE_LEVEL);
     driver->last_step_tick = 0U;
-#if ISD04_STEP_CONTROL_TIMER
-    driver->step_timer = NULL;
-#endif
     driver->step_thread = NULL;
     driver->callback = NULL;
     driver->callback_context = NULL;
@@ -370,11 +276,9 @@ void isd04_driver_start(Isd04Driver *driver)
         driver->state->start(driver);
     }
     isd04_unlock(driver);
-#if !ISD04_STEP_CONTROL_TIMER
     if (!driver->step_thread) {
         driver->step_thread = osThreadNew(isd04_step_task, driver, NULL);
     }
-#endif
 }
 
 void isd04_driver_stop(Isd04Driver *driver)
@@ -391,12 +295,10 @@ void isd04_driver_stop(Isd04Driver *driver)
         driver->state->stop(driver);
     }
     isd04_unlock(driver);
-#if !ISD04_STEP_CONTROL_TIMER
     if (driver->step_thread) {
         osThreadTerminate(driver->step_thread);
         driver->step_thread = NULL;
     }
-#endif
     isd04_lock(driver);
     driver->running = false;
     driver->current_speed = 0;
@@ -514,38 +416,6 @@ void isd04_driver_pulse(Isd04Driver *driver)
     }
 #endif
 
-#if ISD04_STEP_CONTROL_TIMER
-    if (!driver->step_timer) {
-        driver->error = true;
-        if (driver->callback) {
-            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-        }
-        isd04_unlock(driver);
-        return;
-    }
-    // Configure timer for one-shot mode to generate a single pulse
-    // Stop any ongoing PWM first
-    HAL_TIM_PWM_Stop(driver->step_timer, TIM_CHANNEL_1);
-    
-    // Reset the timer counter
-    __HAL_TIM_SET_COUNTER(driver->step_timer, 0);
-    
-    // Configure timer for one-shot mode (single pulse)
-    driver->step_timer->Instance->CR1 |= TIM_CR1_OPM;  // One Pulse Mode
-    
-    // Start PWM for a single pulse
-    if (HAL_TIM_PWM_Start(driver->step_timer, TIM_CHANNEL_1) != HAL_OK) {
-        driver->error = true;
-        if (driver->callback) {
-            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
-        }
-        isd04_unlock(driver);
-        return;
-    }
-    
-    // Timer will automatically stop after one pulse cycle
-    // No need for manual stop or delay
-#else
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
         driver->error = true;
         if (driver->callback) {
@@ -566,7 +436,6 @@ void isd04_driver_pulse(Isd04Driver *driver)
         isd04_unlock(driver);
         return;
     }
-#endif
     driver->last_step_tick = ISD04_DELAY_START();
     isd04_unlock(driver);
 }
@@ -629,28 +498,6 @@ void isd04_driver_step(Isd04Driver *driver, int32_t steps)
     step_unlocked(driver, steps);
     isd04_unlock(driver);
 }
-
-#if ISD04_STEP_CONTROL_TIMER
-void isd04_driver_bind_step_timer(Isd04Driver *driver, Isd04Timer *timer)
-{
-    if (!driver) {
-        return;
-    }
-    isd04_lock(driver);
-    driver->step_timer = timer;
-    isd04_unlock(driver);
-}
-
-void isd04_driver_unbind_step_timer(Isd04Driver *driver)
-{
-    if (!driver) {
-        return;
-    }
-    isd04_lock(driver);
-    driver->step_timer = NULL;
-    isd04_unlock(driver);
-}
-#endif
 
 static void step_unlocked(Isd04Driver *driver, int32_t steps)
 {
