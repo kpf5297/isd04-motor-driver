@@ -68,7 +68,7 @@ typedef enum {
  * Static configuration for the ISD04 driver.
  */
 typedef struct {
-    /** Maximum step rate in steps per second. */
+    /** Maximum motor speed in RPM. */
     int32_t max_speed;
     /** Default microstepping resolution. */
     Isd04Microstep microstep;
@@ -160,7 +160,7 @@ typedef struct {
     Isd04Config config;
     /** Hardware pins controlling the driver. */
     Isd04Hardware hw;
-    /** Current motor speed. */
+    /** Current motor speed in RPM. */
     int32_t current_speed;
     /** Current motor position in steps. */
     int32_t current_position;
@@ -240,12 +240,12 @@ void isd04_driver_stop(Isd04Driver *driver);
  * ::ISD04_EVENT_SPEED_CHANGED when the speed actually changes.
  *
  * @param driver Driver instance.
- * @param speed  New speed in steps per second.
+ * @param speed  New speed in RPM.
  */
 void isd04_driver_set_speed(Isd04Driver *driver, int32_t speed);
 
 /**
- * Obtain the current motor speed in steps per second.
+ * Obtain the current motor speed in RPM.
  *
  * @param driver Driver instance.
  * @return Current speed value; 0 if @p driver is NULL.

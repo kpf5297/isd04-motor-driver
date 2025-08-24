@@ -38,17 +38,17 @@ for (int i = 0; i < 200; ++i) {
 }
 ```
 
-`max_speed` is the largest step rate the driver accepts (in steps per second).
-`isd04_driver_set_speed()` specifies a signed target rate within
-`[-max_speed, max_speed]`, and the driver generates steps at this rate while
-running.
+`max_speed` is the largest motor speed the driver accepts (in revolutions per
+minute, RPM). `isd04_driver_set_speed()` specifies a signed target speed within
+`[-max_speed, max_speed]`, and the driver generates step pulses at the
+corresponding rate while running.
 
 ### CMSIS-RTOS task
 
 When `ISD04_USE_CMSIS` is enabled the driver can generate step pulses from a
 background thread. Call `isd04_driver_start()` once the RTOS is running to
-launch the internal task and use `isd04_driver_set_speed()` to update the step
-rate while the motor is running. `isd04_driver_stop()` halts the task.
+launch the internal task and use `isd04_driver_set_speed()` to update the motor
+speed while it is running. `isd04_driver_stop()` halts the task.
 
 ```c
 #include "cmsis_os2.h"
@@ -58,10 +58,10 @@ static void motor_task(void *argument) {
     Isd04Driver *driver = argument;
 
     isd04_driver_start(driver);            // start internal step thread
-    isd04_driver_set_speed(driver, 100);   // run forward
+    isd04_driver_set_speed(driver, 100);   // run forward at 100 RPM
     osDelay(1000);
 
-    isd04_driver_set_speed(driver, -100);  // reverse direction
+    isd04_driver_set_speed(driver, -100);  // reverse direction at 100 RPM
     osDelay(1000);
 
     isd04_driver_stop(driver);             // stop motor
