@@ -86,7 +86,7 @@ static inline void ISD04_DELAY_US(uint32_t us)
 #endif
 
 #ifndef ISD04_STEP_PULSE_DELAY_MS
-#define ISD04_STEP_PULSE_DELAY_MS 0U
+#define ISD04_STEP_PULSE_DELAY_MS 2U  /* Pulse width in milliseconds */
 #endif
 
 #ifndef ISD04_GPIO_PIN_COUNT

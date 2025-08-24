@@ -244,7 +244,8 @@ void isd04_driver_init(Isd04Driver *driver, const Isd04Config *config, const Isd
     driver->microstep = config->microstep;
     ISD04_APPLY_MICROSTEP(ISD04_MICROSTEP_TO_BITS(driver->microstep));
     if (!isd04_gpio_write_pin(driver->hw.ena_port, driver->hw.ena_pin, ena_level) ||
-        !isd04_gpio_write_pin(driver->hw.dir_port, driver->hw.dir_pin, GPIO_PIN_RESET)) {
+        !isd04_gpio_write_pin(driver->hw.dir_port, driver->hw.dir_pin, GPIO_PIN_RESET) ||
+        !isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
         driver->error = true;
         return;
     }
@@ -412,7 +413,18 @@ void isd04_driver_pulse(Isd04Driver *driver)
     }
 #endif
 
+    /* Ensure step pin is HIGH (idle state) before pulse */
     if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
+        driver->error = true;
+        if (driver->callback) {
+            driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
+        }
+        isd04_unlock(driver);
+        return;
+    }
+
+    /* Generate LOW pulse (active pulse) */
+    if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET)) {
         driver->error = true;
         if (driver->callback) {
             driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
@@ -424,7 +436,8 @@ void isd04_driver_pulse(Isd04Driver *driver)
     /* Ensure minimum pulse width using the delay helpers */
     ISD04_DELAY_MS(ISD04_STEP_PULSE_DELAY_MS);
 #endif
-    if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_RESET)) {
+    /* Return to HIGH (idle state) */
+    if (!isd04_gpio_write_pin(driver->hw.stp_port, driver->hw.stp_pin, GPIO_PIN_SET)) {
         driver->error = true;
         if (driver->callback) {
             driver->callback(ISD04_EVENT_ERROR, driver->callback_context);
