@@ -164,7 +164,7 @@ static void isd04_step_task(void *argument)
     while (driver) {
         if (driver->running && driver->current_speed != 0) {
             int32_t direction = driver->current_speed > 0 ? 1 : -1;
-            uint32_t step_hz = (uint32_t)abs(driver->current_speed);
+                                         (int32_t)driver->config.microstep / 60);
             if (step_hz == 0U) {
                 osDelay(1U);
                 continue;

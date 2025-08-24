@@ -24,12 +24,12 @@ static void motor_task(void *argument)
     /* Start background step generation */
     isd04_driver_start(driver);
 
-    /* Run forward at 100 steps/s for 1 second */
+    /* Run forward at 100 RPM for 1 second */
     isd04_driver_set_direction(driver, true);
     isd04_driver_set_speed(driver, 100);
     osDelay(1000);
 
-    /* Reverse and slow down */
+    /* Reverse and slow down to 50 RPM */
     isd04_driver_set_direction(driver, false);
     isd04_driver_set_speed(driver, 50);
     osDelay(1000);
