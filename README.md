@@ -79,6 +79,13 @@ Key options include:
 - `ISD04_ENABLE_WAKE_DELAY_MS`: driver wake-up delay (default: 1ms)
 - `ISD04_GPIO_PIN_COUNT`: GPIO pin validation range (default: 16)
 
+## Examples
+
+Two reference applications are provided in the `examples` directory:
+
+- `examples/main_gpio.c` demonstrates manual STEP pulses via GPIO (ISD04_STEP_CONTROL_TIMER=0).
+- `examples/main_timer.c` drives the STEP pin with a hardware timer and optional interrupts (ISD04_STEP_CONTROL_TIMER=1).
+
 ## API Reference
 
 **Core Functions:**
